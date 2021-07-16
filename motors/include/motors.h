@@ -87,3 +87,4 @@ esp_err_t motors_newton_to_duty(float newton, float* duty);
 esp_err_t motors_duty_to_newton(float duty, float* newton);
 
 #endif /* COMPONENTS_MOTORS_INCLUDE_MOTORS_H_ */
+
