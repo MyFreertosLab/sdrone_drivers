@@ -270,7 +270,7 @@ esp_err_t motors_init(motors_handle_t motors_handle) {
 #ifdef MOTORS_FRAME_HORIZONTAL_HEXACOPTER
 	ESP_ERROR_CHECK(motors_config_horizontal_hexacopter(motors_handle));
 #else
-#ifdef MOTORS_FRAME_TWO_HORIZONTAL_AXIS
+#ifdef MOTORS_FRAME_ONE_HORIZONTAL_AXIS
 	ESP_ERROR_CHECK(motors_config_two_horizontal_axis(motors_handle));
 #endif
 #endif
