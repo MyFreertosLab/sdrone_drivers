@@ -190,6 +190,52 @@ esp_err_t motors_config_horizontal_hexacopter(motors_handle_t motors_handle) {
 
 	return ESP_OK;
 }
+
+/*
+ * Quadcopter with horizontal axis
+ *
+ *        3   1
+ *         \ /
+ *          +
+ *         / \
+ *        2   4
+ */
+esp_err_t motors_config_x_quadcopter(motors_handle_t motors_handle) {
+       printf("motors_config_x_quadcopter::Started\n");
+
+       // Config switchon/off pin and frequency
+       motors_handle->frequency = MOTORS_PWM_FREQUENCY;
+
+       // Config motor front left
+       motors_handle->motor[2].enabled = true;
+       motors_handle->motor[2].pin = GPIO_NUM_18;
+       motors_handle->motor[2].position = FRONT_LEFT;
+    motors_handle->motor[2].num = 3;
+
+       // Config motor front right
+       motors_handle->motor[3].enabled = true;
+       motors_handle->motor[3].pin = GPIO_NUM_19;
+       motors_handle->motor[3].position = FRONT_RIGHT;
+    motors_handle->motor[3].num = 1;
+
+       // Config motor rear left
+       motors_handle->motor[4].enabled = true;
+       motors_handle->motor[4].pin = GPIO_NUM_5;
+       motors_handle->motor[4].position = REAR_LEFT;
+    motors_handle->motor[4].num = 2;
+
+       // Config motor rear right
+       motors_handle->motor[5].enabled = true;
+       motors_handle->motor[5].pin = GPIO_NUM_4;
+       motors_handle->motor[5].position = REAR_RIGHT;
+    motors_handle->motor[5].num = 4;
+
+
+       printf("motors_config_x_quadcopter::Ended\n");
+
+       return ESP_OK;
+}
+
 /*
  * Two Horizontal Axis Test Frame (pitch rotation used to test motors controller algorithm)
  *
@@ -270,8 +316,12 @@ esp_err_t motors_init(motors_handle_t motors_handle) {
 #ifdef MOTORS_FRAME_HORIZONTAL_HEXACOPTER
 	ESP_ERROR_CHECK(motors_config_horizontal_hexacopter(motors_handle));
 #else
+#ifdef MOTORS_FRAME_X_QUADCOPTER
+       ESP_ERROR_CHECK(motors_config_x_quadcopter(motors_handle));
+#else
 #ifdef MOTORS_FRAME_TWO_HORIZONTAL_AXIS
 	ESP_ERROR_CHECK(motors_config_two_horizontal_axis(motors_handle));
+#endif
 #endif
 #endif
 
