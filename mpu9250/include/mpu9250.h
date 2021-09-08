@@ -285,6 +285,7 @@ enum clock_sel_e {
     INV_CLK_PLL,
     NUM_CLK
 };
+
 /*********************************
 *********** Utilities ************
 *********************************/
@@ -438,6 +439,8 @@ typedef union {
      int16_t temp;
      int16_t gyro[3];
      int16_t ext[12];
+     int8_t gyro_axis_direction[3];
+     int8_t accel_axis_direction[3];
    } data_s_vector;
    struct {
      int16_t accel_data_x;
@@ -448,6 +451,12 @@ typedef union {
      int16_t gyro_data_y;
      int16_t gyro_data_z;
      int16_t ext_data[12];
+     int8_t gyro_axis_direction_x;
+     int8_t gyro_axis_direction_y;
+     int8_t gyro_axis_direction_z;
+     int8_t accel_axis_direction_x;
+     int8_t accel_axis_direction_y;
+     int8_t accel_axis_direction_z;
    } data_s_xyz;
 } mpu9250_raw_data_t;
 typedef mpu9250_raw_data_t* mpu9250_raw_data_buff_t;

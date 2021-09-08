@@ -34,6 +34,7 @@ static void IRAM_ATTR mpu9250_isr(void* mpu9250_handle)
 		portYIELD_FROM_ISR(); // this wakes up sample_timer_task immediately
 	}
 }
+
 void mpu9250_cb_init(mpu9250_cb_handle_t cb) {
 	cb->cursor = -1;
 	memset(cb, 0, sizeof(mpu9250_cb_t));
@@ -196,9 +197,9 @@ esp_err_t mpu9250_load_raw_data(mpu9250_handle_t mpu9250_handle) {
 	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y = ((buff[2] << 8) | buff[3]);
 	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_z = ((buff[4] << 8) | buff[5]);
 	mpu9250_handle->data.raw_data.data_s_xyz.temp_data = ((buff[6] << 8) | buff[7]);
-	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_x = ((buff[8] << 8) | buff[9]);
-	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_y = ((buff[10] << 8) | buff[11]);
-	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_z = ((buff[12] << 8) | buff[13]);
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_x = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_x*((buff[8] << 8) | buff[9]);
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_y = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_y*((buff[10] << 8) | buff[11]);
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_z = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_z*((buff[12] << 8) | buff[13]);
 
 	for(uint8_t i = 0; i < 3; i++) {
 		mpu9250_cb_add(&mpu9250_handle->data.accel.cb[i], mpu9250_handle->data.raw_data.data_s_vector.accel[i]);

@@ -179,9 +179,8 @@ static esp_err_t mpu9250_gyro_filter_data(mpu9250_handle_t mpu9250_handle) {
 static esp_err_t mpu9250_gyro_calc_rpy(mpu9250_handle_t mpu9250_handle) {
 	// angolo di rotazione: w(i)=domega(i)*dt espresso in rad
 	double w[3] = {0.0f,0.0f,0.0f};
-	int8_t wd[3] = {1,1,-1};  //direction of rotations (z is inverse on mpu9250)
 	for(uint8_t i = 0; i < 3; i++) {
-		w[i] = wd[i]*(double)(mpu9250_handle->data.gyro.cal.kalman[i].X)/(double)mpu9250_handle->data.gyro.lsb/(double)mpu9250_handle->data_rate/(double)360.0f*(double)PI_2;
+		w[i] = (double)(mpu9250_handle->data.gyro.cal.kalman[i].X)/(double)mpu9250_handle->data.gyro.lsb/(double)mpu9250_handle->data_rate/(double)360.0f*(double)PI_2;
 	}
 
 	mpu9250_handle->data.gyro.rpy.xyz.x += w[X_POS];
@@ -195,6 +194,9 @@ static esp_err_t mpu9250_gyro_calc_rpy(mpu9250_handle_t mpu9250_handle) {
  ****************** A P I  I M P L E M E N T A T I O N ******************
  ************************************************************************/
 esp_err_t mpu9250_gyro_init(mpu9250_handle_t mpu9250_handle) {
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_x = 1;
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_y = 1;
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_z = -1;
 	mpu9250_gyro_load_calibration_data(mpu9250_handle); // set offset, var, sqm, P, K
 	mpu9250_gyro_save_offset(mpu9250_handle);
 	mpu9250_gyro_init_kalman_filter(mpu9250_handle); // this reset P,K
@@ -224,15 +226,15 @@ esp_err_t mpu9250_gyro_set_fsr(mpu9250_handle_t mpu9250_handle, uint8_t fsr) {
 esp_err_t mpu9250_gyro_load_offset(mpu9250_handle_t mpu9250_handle) {
 	uint8_t buff[6];
 	esp_err_t ret = mpu9250_read_buff(mpu9250_handle, MPU9250_XG_OFFSET_H, buff, 6*8);
-	mpu9250_handle->data.gyro.cal.offset.xyz.x = (buff[0] << 8) + buff[1];
-	mpu9250_handle->data.gyro.cal.offset.xyz.y = (buff[2] << 8) + buff[3];
-	mpu9250_handle->data.gyro.cal.offset.xyz.z = (buff[4] << 8) + buff[5];
+	mpu9250_handle->data.gyro.cal.offset.xyz.x = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_x*((buff[0] << 8) + buff[1]);
+	mpu9250_handle->data.gyro.cal.offset.xyz.y = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_y*((buff[2] << 8) + buff[3]);
+	mpu9250_handle->data.gyro.cal.offset.xyz.z = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_z*((buff[4] << 8) + buff[5]);
 	return ret;
 }
 esp_err_t mpu9250_gyro_set_offset(mpu9250_handle_t mpu9250_handle, int16_t xoff, int16_t yoff, int16_t zoff) {
-	mpu9250_handle->data.gyro.cal.offset.xyz.x = xoff;
-	mpu9250_handle->data.gyro.cal.offset.xyz.y = yoff;
-	mpu9250_handle->data.gyro.cal.offset.xyz.z = zoff;
+	mpu9250_handle->data.gyro.cal.offset.xyz.x = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_x*xoff;
+	mpu9250_handle->data.gyro.cal.offset.xyz.y = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_y*yoff;
+	mpu9250_handle->data.gyro.cal.offset.xyz.z = mpu9250_handle->data.raw_data.data_s_xyz.gyro_axis_direction_z*zoff;
 	return mpu9250_gyro_save_offset(mpu9250_handle);
 }
 
