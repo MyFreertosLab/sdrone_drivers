@@ -71,7 +71,7 @@ esp_err_t motors_high_duty_motors(motors_handle_t motors_handle) {
 	return ESP_OK;
 }
 
-esp_err_t motors_update_motors(motors_handle_t motors_handle) {
+esp_err_t motors_update_mcpwm_duty(motors_handle_t motors_handle) {
 	for (uint8_t i = 0; i < MOTORS_MAX_NUM; i++) {
 	  if (motors_handle->motor[i].enabled) {
 		ESP_ERROR_CHECK(mcpwm_set_duty(motors_handle->motor[i].mcpwm, motors_timers[i],motors_pwm_generator[i],motors_handle->motor[i].duty_cycle));
@@ -143,7 +143,8 @@ esp_err_t motors_init_mcpwm(motors_handle_t motors_handle, mcpwm_unit_t unit) {
  *         / \
  *        6   4
  */
-esp_err_t motors_config_horizontal_hexacopter(motors_handle_t motors_handle) {
+#ifdef MOTORS_FRAME_HORIZONTAL_HEXACOPTER
+esp_err_t motors_config(motors_handle_t motors_handle) {
 	printf("motors_config_horizontal_hexacopter::Started\n");
 
 	// Config switchon/off pin and frequency
@@ -190,7 +191,17 @@ esp_err_t motors_config_horizontal_hexacopter(motors_handle_t motors_handle) {
 
 	return ESP_OK;
 }
+// convert tangential acceleration on axis to tangential acceleration on motors
+esp_err_t motors_axis_at_to_motors_at(motors_handle_t motors_handle) {
 
+	return ESP_OK;
+}
+// convert tangential acceleration on axis to tangential acceleration on motors
+esp_err_t motors_at_to_motors_duty(motors_handle_t motors_handle) {
+	// TODO: T.B.D.
+	return ESP_OK;
+}
+#else
 /*
  * Quadcopter with horizontal axis
  *
@@ -200,35 +211,36 @@ esp_err_t motors_config_horizontal_hexacopter(motors_handle_t motors_handle) {
  *         / \
  *        2   4
  */
-esp_err_t motors_config_x_quadcopter(motors_handle_t motors_handle) {
+#ifdef MOTORS_FRAME_X_QUADCOPTER
+esp_err_t motors_config(motors_handle_t motors_handle) {
        printf("motors_config_x_quadcopter::Started\n");
 
        // Config switchon/off pin and frequency
        motors_handle->frequency = MOTORS_PWM_FREQUENCY;
 
-       // Config motor front left
-       motors_handle->motor[2].enabled = true;
-       motors_handle->motor[2].pin = GPIO_NUM_18;
-       motors_handle->motor[2].position = FRONT_LEFT;
-    motors_handle->motor[2].num = 3;
-
        // Config motor front right
-       motors_handle->motor[3].enabled = true;
-       motors_handle->motor[3].pin = GPIO_NUM_19;
-       motors_handle->motor[3].position = FRONT_RIGHT;
-    motors_handle->motor[3].num = 1;
+       motors_handle->motor[0].enabled = true;
+       motors_handle->motor[0].pin = GPIO_NUM_22; // j14 on board
+       motors_handle->motor[0].position = FRONT_RIGHT;
+       motors_handle->motor[0].num = 1;
 
        // Config motor rear left
-       motors_handle->motor[4].enabled = true;
-       motors_handle->motor[4].pin = GPIO_NUM_5;
-       motors_handle->motor[4].position = REAR_LEFT;
-    motors_handle->motor[4].num = 2;
+       motors_handle->motor[1].enabled = true;
+       motors_handle->motor[1].pin = GPIO_NUM_18; // j8 on board
+       motors_handle->motor[1].position = REAR_LEFT;
+       motors_handle->motor[1].num = 2;
+
+       // Config motor front left
+       motors_handle->motor[2].enabled = true;
+       motors_handle->motor[2].pin = GPIO_NUM_19; // j7 on board
+       motors_handle->motor[2].position = FRONT_LEFT;
+       motors_handle->motor[2].num = 3;
 
        // Config motor rear right
-       motors_handle->motor[5].enabled = true;
-       motors_handle->motor[5].pin = GPIO_NUM_4;
-       motors_handle->motor[5].position = REAR_RIGHT;
-    motors_handle->motor[5].num = 4;
+       motors_handle->motor[3].enabled = true;
+       motors_handle->motor[3].pin = GPIO_NUM_21; // j12 on board
+       motors_handle->motor[3].position = REAR_RIGHT;
+       motors_handle->motor[3].num = 4;
 
 
        printf("motors_config_x_quadcopter::Ended\n");
@@ -236,6 +248,21 @@ esp_err_t motors_config_x_quadcopter(motors_handle_t motors_handle) {
        return ESP_OK;
 }
 
+// convert tangential acceleration on axis to tangential acceleration on motors
+esp_err_t motors_axis_at_to_motors_at(motors_handle_t motors_handle) {
+	// TODO: T.B.D.
+	return ESP_OK;
+}
+
+// convert tangential acceleration on axis to tangential acceleration on motors
+esp_err_t motors_at_to_motors_duty(motors_handle_t motors_handle) {
+	// TODO: T.B.D.
+	// Esempio:
+	// ESP_ERROR_CHECK(motors_newton_to_duty(motors_handle->motor[i].at, &motors_handle->motor[i].duty_cycle));
+
+	return ESP_OK;
+}
+#else
 /*
  * Two Horizontal Axis Test Frame (pitch rotation used to test motors controller algorithm)
  *
@@ -243,7 +270,8 @@ esp_err_t motors_config_x_quadcopter(motors_handle_t motors_handle) {
  *         / \
  *        -----
  */
-esp_err_t motors_config_two_horizontal_axis(motors_handle_t motors_handle) {
+#ifdef MOTORS_FRAME_HORIZONTAL_HEXACOPTER
+esp_err_t motors_config(motors_handle_t motors_handle) {
 	printf("motors_config_two_horizontal_axis::Started\n");
 
 	// Config switchon/off pin and frequency
@@ -265,7 +293,19 @@ esp_err_t motors_config_two_horizontal_axis(motors_handle_t motors_handle) {
 
 	return ESP_OK;
 }
-
+// convert tangential acceleration on axis to tangential acceleration on motors
+esp_err_t motors_axis_at_to_motors_at(motors_handle_t motors_handle) {
+	// TODO: T.B.D.
+	return ESP_OK;
+}
+// convert tangential acceleration on axis to tangential acceleration on motors
+esp_err_t motors_at_to_motors_duty(motors_handle_t motors_handle) {
+	// TODO: T.B.D.
+	return ESP_OK;
+}
+#endif
+#endif
+#endif
 esp_err_t motors_config_switchonoff_pin(motors_handle_t motors_handle) {
 	printf("motors_config_switchonoff_pin::Started\n");
     // Gpio Switch On/Off pin
@@ -313,17 +353,7 @@ esp_err_t motors_init(motors_handle_t motors_handle) {
 	ESP_ERROR_CHECK(motors_switchoff(motors_handle));
     vTaskDelay(500); //delay of 5s (at 100Hz)
 
-#ifdef MOTORS_FRAME_HORIZONTAL_HEXACOPTER
-	ESP_ERROR_CHECK(motors_config_horizontal_hexacopter(motors_handle));
-#else
-#ifdef MOTORS_FRAME_X_QUADCOPTER
-       ESP_ERROR_CHECK(motors_config_x_quadcopter(motors_handle));
-#else
-#ifdef MOTORS_FRAME_TWO_HORIZONTAL_AXIS
-	ESP_ERROR_CHECK(motors_config_two_horizontal_axis(motors_handle));
-#endif
-#endif
-#endif
+	ESP_ERROR_CHECK(motors_config(motors_handle));
 
 	ESP_ERROR_CHECK(motors_init_mcpwm(motors_handle, MCPWM_UNIT_0));
 	ESP_ERROR_CHECK(motors_init_mcpwm(motors_handle, MCPWM_UNIT_1));
@@ -363,7 +393,9 @@ esp_err_t motors_switchon(motors_handle_t motors_handle) {
 }
 esp_err_t motors_update(motors_handle_t motors_handle) {
 	if(motors_handle->status == ON_ARMED) {
-      ESP_ERROR_CHECK(motors_update_motors(motors_handle));
+	  ESP_ERROR_CHECK(motors_axis_at_to_motors_at(motors_handle));
+	  ESP_ERROR_CHECK(motors_at_to_motors_duty(motors_handle));
+      ESP_ERROR_CHECK(motors_update_mcpwm_duty(motors_handle));
 	}
 	return ESP_OK;
 }
