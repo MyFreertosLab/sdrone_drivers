@@ -32,7 +32,8 @@
 typedef enum {
         RC_TXRX_IGNORE = 0,
         RC_TXRX_TRANSMITTED = 1,
-        RC_TXRX_RECEIVED = 2
+        RC_TXRX_RECEIVED = 2,
+        RC_TXRX_DATA_NOT_RECEIVED = 3
 } rc_txrx_signal_t;
 
 typedef struct {

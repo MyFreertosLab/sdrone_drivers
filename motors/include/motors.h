@@ -34,6 +34,8 @@
 #define MOTORS_ACCEL_RANGE 4.4f
 #define MOTORS_DUTY_DEAD_RANGE 60.0f
 
+//#define MOTORS_ENABLE_SWITCHON_SWITCHOFF
+
 // TODO: Define all positions from quad to opto
 typedef enum {
 	FRONT,

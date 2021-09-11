@@ -40,19 +40,16 @@ esp_err_t motors_init_pwm_timer(motors_handle_t motors_handle, mcpwm_unit_t unit
 }
 
 esp_err_t motors_low_duty_motor(motors_handle_t motors_handle, uint8_t motor_indx) {
-	printf("motors: motors_low_duty_motor [%d]\n", motor_indx);
 	ESP_ERROR_CHECK(mcpwm_set_duty(motors_handle->motor[motor_indx].mcpwm, motors_timers[motor_indx],motors_pwm_generator[motor_indx], motors_get_duty_low(motors_handle)));
 	return ESP_OK;
 }
 
 esp_err_t motors_high_duty_motor(motors_handle_t motors_handle, uint8_t motor_indx) {
-	printf("motors: motors_high_duty_motor [%d], timer[%d], gen[%d]\n", motor_indx, motors_timers[motor_indx],motors_pwm_generator[motor_indx]);
 	ESP_ERROR_CHECK(mcpwm_set_duty(motors_handle->motor[motor_indx].mcpwm, motors_timers[motor_indx],motors_pwm_generator[motor_indx],motors_get_duty_high(motors_handle)));
 	return ESP_OK;
 }
 
 esp_err_t motors_low_duty_motors(motors_handle_t motors_handle) {
-	printf("motors: motors_low_duty_motors\n");
 	for (uint8_t i = 0; i < MOTORS_MAX_NUM; i++) {
 		if (motors_handle->motor[i].enabled) {
 			ESP_ERROR_CHECK(motors_low_duty_motor(motors_handle, i));
@@ -62,7 +59,6 @@ esp_err_t motors_low_duty_motors(motors_handle_t motors_handle) {
 }
 
 esp_err_t motors_high_duty_motors(motors_handle_t motors_handle) {
-	printf("motors: motors_high_duty_motors\n");
 	for (uint8_t i = 0; i < MOTORS_MAX_NUM; i++) {
 		if (motors_handle->motor[i].enabled) {
 			ESP_ERROR_CHECK(motors_high_duty_motor(motors_handle, i));
@@ -191,13 +187,8 @@ esp_err_t motors_config(motors_handle_t motors_handle) {
 
 	return ESP_OK;
 }
-// convert tangential acceleration on axis to tangential acceleration on motors
-esp_err_t motors_axis_at_to_motors_at(motors_handle_t motors_handle) {
-
-	return ESP_OK;
-}
-// convert tangential acceleration on axis to tangential acceleration on motors
-esp_err_t motors_at_to_motors_duty(motors_handle_t motors_handle) {
+// convert tangential acceleration on axis to duty cycle on motors
+esp_err_t motors_axis_at_to_motors_duty(motors_handle_t motors_handle) {
 	// TODO: T.B.D.
 	return ESP_OK;
 }
@@ -248,17 +239,21 @@ esp_err_t motors_config(motors_handle_t motors_handle) {
        return ESP_OK;
 }
 
-// convert tangential acceleration on axis to tangential acceleration on motors
-esp_err_t motors_axis_at_to_motors_at(motors_handle_t motors_handle) {
-	// TODO: T.B.D.
-	return ESP_OK;
-}
+// convert tangential acceleration on axis to duty cycle on motors
+esp_err_t motors_axis_at_to_motors_duty(motors_handle_t motors_handle) {
 
-// convert tangential acceleration on axis to tangential acceleration on motors
-esp_err_t motors_at_to_motors_duty(motors_handle_t motors_handle) {
-	// TODO: T.B.D.
-	// Esempio:
-	// ESP_ERROR_CHECK(motors_newton_to_duty(motors_handle->motor[i].at, &motors_handle->motor[i].duty_cycle));
+	float at[4] = {0.0f,0.0f,0.0f,0.0f};
+
+	if(motors_handle->thrust >= 0.01f) {
+		at[0] = (- motors_handle->at[0] - motors_handle->at[1] - motors_handle->at[2])*0.25f + motors_handle->thrust;
+		at[1] = (  motors_handle->at[0] + motors_handle->at[1] - motors_handle->at[2])*0.25f + motors_handle->thrust;
+		at[2] = (  motors_handle->at[0] - motors_handle->at[1] + motors_handle->at[2])*0.25f + motors_handle->thrust;
+		at[3] = (- motors_handle->at[0] + motors_handle->at[1] + motors_handle->at[2])*0.25f + motors_handle->thrust;
+	}
+
+	for(uint8_t i = 0; i < 4; i++) {
+		ESP_ERROR_CHECK(motors_newton_to_duty(at[i], &motors_handle->motor[i].duty_cycle));
+	}
 
 	return ESP_OK;
 }
@@ -293,13 +288,8 @@ esp_err_t motors_config(motors_handle_t motors_handle) {
 
 	return ESP_OK;
 }
-// convert tangential acceleration on axis to tangential acceleration on motors
-esp_err_t motors_axis_at_to_motors_at(motors_handle_t motors_handle) {
-	// TODO: T.B.D.
-	return ESP_OK;
-}
-// convert tangential acceleration on axis to tangential acceleration on motors
-esp_err_t motors_at_to_motors_duty(motors_handle_t motors_handle) {
+// convert tangential acceleration on axis to duty cycle on motors
+esp_err_t motors_axis_at_to_motors_duty(motors_handle_t motors_handle) {
 	// TODO: T.B.D.
 	return ESP_OK;
 }
@@ -348,28 +338,31 @@ esp_err_t motors_duty_to_newton(float duty, float* newton) {
 esp_err_t motors_init(motors_handle_t motors_handle) {
 	printf("motors: motors_init\n");
 	memset(motors_handle, 0, sizeof(*motors_handle));
-
+#ifdef MOTORS_ENABLE_SWITCHON_SWITCHOFF
 	ESP_ERROR_CHECK(motors_config_switchonoff_pin(motors_handle));
 	ESP_ERROR_CHECK(motors_switchoff(motors_handle));
     vTaskDelay(500); //delay of 5s (at 100Hz)
-
+#endif
 	ESP_ERROR_CHECK(motors_config(motors_handle));
 
 	ESP_ERROR_CHECK(motors_init_mcpwm(motors_handle, MCPWM_UNIT_0));
 	ESP_ERROR_CHECK(motors_init_mcpwm(motors_handle, MCPWM_UNIT_1));
     vTaskDelay(500); //delay of 5s (at 100Hz)
+
+#ifdef MOTORS_ENABLE_SWITCHON_SWITCHOFF
     ESP_ERROR_CHECK(motors_high_duty_motors(motors_handle));
 	ESP_ERROR_CHECK(motors_switchon(motors_handle));
     vTaskDelay(200); //delay of 2s (at 100Hz)
+#else
+	ESP_ERROR_CHECK(motors_disarm(motors_handle));
+#endif
     ESP_ERROR_CHECK(motors_low_duty_motors(motors_handle));
     vTaskDelay(200); //delay of 2s (at 100Hz)
 	return ESP_OK;
 }
 
 esp_err_t motors_arm(motors_handle_t motors_handle) {
-	printf("motors: motors_arm\n");
-    ESP_ERROR_CHECK(motors_low_duty_motors(motors_handle));;
-	ESP_ERROR_CHECK(motors_switchon(motors_handle));
+    ESP_ERROR_CHECK(motors_low_duty_motors(motors_handle));
     motors_handle->status = ON_ARMED;
 	return ESP_OK;
 }
@@ -380,21 +373,18 @@ esp_err_t motors_disarm(motors_handle_t motors_handle) {
 	return ESP_OK;
 }
 esp_err_t motors_switchoff(motors_handle_t motors_handle) {
-	printf("motors: motors_switchoff\n");
     gpio_set_level(MOTORS_SWITCH_ON_OFF_PIN, MOTORS_SWITCH_OFF);
     motors_handle->status = OFF;
 	return ESP_OK;
 }
 esp_err_t motors_switchon(motors_handle_t motors_handle) {
-	printf("motors: motors_switchon\n");
     gpio_set_level(MOTORS_SWITCH_ON_OFF_PIN, MOTORS_SWITCH_ON);
 	motors_handle->status = ON_DISARMED;
 	return ESP_OK;
 }
 esp_err_t motors_update(motors_handle_t motors_handle) {
 	if(motors_handle->status == ON_ARMED) {
-	  ESP_ERROR_CHECK(motors_axis_at_to_motors_at(motors_handle));
-	  ESP_ERROR_CHECK(motors_at_to_motors_duty(motors_handle));
+	  ESP_ERROR_CHECK(motors_axis_at_to_motors_duty(motors_handle));
       ESP_ERROR_CHECK(motors_update_mcpwm_duty(motors_handle));
 	}
 	return ESP_OK;

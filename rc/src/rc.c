@@ -12,46 +12,93 @@
 #include <nvs_flash.h>
 #include <nvs.h>
 
-static 	RingbufHandle_t rb = NULL;
+static RingbufHandle_t rb = NULL;
 
 static esp_err_t rc_load_calibration_data(rc_handle_t rc_handle) {
-    nvs_handle_t my_handle;
-    uint8_t flashed = 0;
-    ESP_ERROR_CHECK(nvs_open("RC_CAL", NVS_READWRITE, &my_handle));
-    ESP_ERROR_CHECK(nvs_get_u8(my_handle, "FLASHED", &flashed));
+	nvs_handle_t my_handle;
+	uint8_t flashed = 0;
+	ESP_ERROR_CHECK(nvs_open("RC_CAL", NVS_READWRITE, &my_handle));
+	ESP_ERROR_CHECK(nvs_get_u8(my_handle, "FLASHED", &flashed));
 
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MIN_1", &rc_handle->rc_channels_range[0].min));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MIN_2", &rc_handle->rc_channels_range[1].min));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MIN_3", &rc_handle->rc_channels_range[2].min));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MIN_4", &rc_handle->rc_channels_range[3].min));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MIN_5", &rc_handle->rc_channels_range[4].min));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MIN_6", &rc_handle->rc_channels_range[5].min));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MIN_7", &rc_handle->rc_channels_range[6].min));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MIN_8", &rc_handle->rc_channels_range[7].min));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MIN_1",
+					&rc_handle->rc_channels_range[0].min));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MIN_2",
+					&rc_handle->rc_channels_range[1].min));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MIN_3",
+					&rc_handle->rc_channels_range[2].min));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MIN_4",
+					&rc_handle->rc_channels_range[3].min));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MIN_5",
+					&rc_handle->rc_channels_range[4].min));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MIN_6",
+					&rc_handle->rc_channels_range[5].min));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MIN_7",
+					&rc_handle->rc_channels_range[6].min));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MIN_8",
+					&rc_handle->rc_channels_range[7].min));
 
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MAX_1", &rc_handle->rc_channels_range[0].max));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MAX_2", &rc_handle->rc_channels_range[1].max));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MAX_3", &rc_handle->rc_channels_range[2].max));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MAX_4", &rc_handle->rc_channels_range[3].max));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MAX_5", &rc_handle->rc_channels_range[4].max));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MAX_6", &rc_handle->rc_channels_range[5].max));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MAX_7", &rc_handle->rc_channels_range[6].max));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_MAX_8", &rc_handle->rc_channels_range[7].max));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MAX_1",
+					&rc_handle->rc_channels_range[0].max));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MAX_2",
+					&rc_handle->rc_channels_range[1].max));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MAX_3",
+					&rc_handle->rc_channels_range[2].max));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MAX_4",
+					&rc_handle->rc_channels_range[3].max));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MAX_5",
+					&rc_handle->rc_channels_range[4].max));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MAX_6",
+					&rc_handle->rc_channels_range[5].max));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MAX_7",
+					&rc_handle->rc_channels_range[6].max));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_MAX_8",
+					&rc_handle->rc_channels_range[7].max));
 
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_CNT_1", &rc_handle->rc_channels_range[0].center));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_CNT_2", &rc_handle->rc_channels_range[1].center));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_CNT_3", &rc_handle->rc_channels_range[2].center));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_CNT_4", &rc_handle->rc_channels_range[3].center));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_CNT_5", &rc_handle->rc_channels_range[4].center));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_CNT_6", &rc_handle->rc_channels_range[5].center));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_CNT_7", &rc_handle->rc_channels_range[6].center));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "RC_CNT_8", &rc_handle->rc_channels_range[7].center));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_CNT_1",
+					&rc_handle->rc_channels_range[0].center));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_CNT_2",
+					&rc_handle->rc_channels_range[1].center));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_CNT_3",
+					&rc_handle->rc_channels_range[2].center));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_CNT_4",
+					&rc_handle->rc_channels_range[3].center));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_CNT_5",
+					&rc_handle->rc_channels_range[4].center));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_CNT_6",
+					&rc_handle->rc_channels_range[5].center));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_CNT_7",
+					&rc_handle->rc_channels_range[6].center));
+	ESP_ERROR_CHECK(
+			nvs_get_u16(my_handle, "RC_CNT_8",
+					&rc_handle->rc_channels_range[7].center));
 
-    // Close
-    nvs_close(my_handle);
+	// Close
+	nvs_close(my_handle);
 	return ESP_OK;
 }
-
 
 /************************************************************************
  ****************** A P I  I M P L E M E N T A T I O N ******************
@@ -67,7 +114,8 @@ esp_err_t rc_init(rc_handle_t rc_handle) {
 	rc_handle->config.clk_div = RC_CLK_DIV;
 	rc_handle->config.mem_block_num = RC_BUFF_BLOCK_NUM;
 	rc_handle->config.rx_config.filter_ticks_thresh = RC_TICK_TRASH;
-	rc_handle->config.rx_config.idle_threshold = RC_PPM_TIMEOUT_US * (RC_TICK_US);
+	rc_handle->config.rx_config.idle_threshold = RC_PPM_TIMEOUT_US
+			* (RC_TICK_US);
 	rc_handle->config.rmt_mode = RMT_MODE_RX;
 	rc_handle->config.rx_config.filter_en = true;
 
@@ -91,7 +139,7 @@ esp_err_t rc_init(rc_handle_t rc_handle) {
 
 esp_err_t rc_start(rc_handle_t rc_handle) {
 	uint16_t rmt_tick_microseconds = (80 / rc_handle->config.clk_div); /*!< RMT counter value for 10 us.(Source clock is APB clock) */
-    rc_handle->data.txrx_signal = RC_TXRX_IGNORE;
+	rc_handle->data.txrx_signal = RC_TXRX_IGNORE;
 
 	rmt_rx_start(rc_handle->config.channel, true);
 
@@ -103,16 +151,17 @@ esp_err_t rc_start(rc_handle_t rc_handle) {
 		if (item) {
 			counter++;
 			for (int i = 0; i < RC_MAX_CHANNELS; i++) {
-				rc_handle->data.raw[i] = (uint16_t)(((item + i)->duration1
+				rc_handle->data.raw[i] = (uint16_t) (((item + i)->duration1
 						+ (item + i)->duration0) / rmt_tick_microseconds);
 			}
-            rc_handle->data.txrx_signal = RC_TXRX_TRANSMITTED;
+			rc_handle->data.txrx_signal = RC_TXRX_TRANSMITTED;
 			vRingbufferReturnItem(rb, (void*) item);
-			if(counter == 4) {
+			if (counter == 4) {
 				break;
 			}
 		} else {
-			// printf("RC::Data NOT received\n");
+			rc_handle->data.txrx_signal = RC_TXRX_DATA_NOT_RECEIVED;
+			break;
 		}
 	}
 	ESP_ERROR_CHECK(rc_stop(rc_handle));
