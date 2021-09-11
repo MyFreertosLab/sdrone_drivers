@@ -314,6 +314,13 @@ esp_err_t motors_config_switchonoff_pin(motors_handle_t motors_handle) {
  ****************** A P I  I M P L E M E N T A T I O N ******************
  ************************************************************************/
 esp_err_t motors_newton_to_duty(float newton, float* duty) {
+	// limit newton in [0,MOTORS_ACCEL_RANGE]
+	if(newton < 0.0f) {
+		newton = 0.0f;
+	} else if(newton > MOTORS_ACCEL_RANGE) {
+		newton = MOTORS_ACCEL_RANGE;
+	}
+
 	if(newton <= (MOTORS_DUTY_DEAD_RANGE - MOTORS_DUTY_MAX_ZERO)*MOTORS_DUTY_TO_NEWTON_FACTOR_LOW) {
 		*duty = MOTORS_DUTY_MAX_ZERO;
 	} else if(newton <= (MOTORS_DUTY_MAX_LOW - MOTORS_DUTY_MAX_ZERO)*MOTORS_DUTY_TO_NEWTON_FACTOR_LOW) {
