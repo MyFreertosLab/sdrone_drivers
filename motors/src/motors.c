@@ -245,7 +245,7 @@ esp_err_t motors_axis_at_to_motors_duty(motors_handle_t motors_handle) {
 	float at[4] = {0.0f,0.0f,0.0f,0.0f};
 	// motors 1 & 2 are counterclockwise
 	// motors 3 & 4 are clockwise
-	if(motors_handle->thrust >= 0.01f) {
+	if(motors_handle->thrust >= 0.20f) {
 		at[0] = (- motors_handle->at[0] - motors_handle->at[1] + motors_handle->at[2])*0.25f + motors_handle->thrust;
 		at[1] = (  motors_handle->at[0] + motors_handle->at[1] + motors_handle->at[2])*0.25f + motors_handle->thrust;
 		at[2] = (  motors_handle->at[0] - motors_handle->at[1] - motors_handle->at[2])*0.25f + motors_handle->thrust;
