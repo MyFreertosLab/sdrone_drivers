@@ -211,12 +211,13 @@ esp_err_t mpu9250_load_raw_data(mpu9250_handle_t mpu9250_handle) {
 esp_err_t mpu9250_calc_gravity(mpu9250_handle_t mpu9250_handle) {
 	double cx=cos(mpu9250_handle->data.gyro.rpy.xyz.x);
 	double cy=cos(mpu9250_handle->data.gyro.rpy.xyz.y);
+	double cz=cos(mpu9250_handle->data.gyro.rpy.xyz.z);
 	double sx=sin(mpu9250_handle->data.gyro.rpy.xyz.x);
 	double sy=sin(mpu9250_handle->data.gyro.rpy.xyz.y);
-	// roll,pitch,yaw from gyro are axis rotation
-	// then attitude vector rotation is inverse
-	mpu9250_handle->data.attitude[X_POS] = -sy;
-	mpu9250_handle->data.attitude[Y_POS] = cy*sx;
+	double sz=sin(mpu9250_handle->data.gyro.rpy.xyz.z);
+
+	mpu9250_handle->data.attitude[X_POS] = cz*sy*cx+sz*sx;
+	mpu9250_handle->data.attitude[Y_POS] = sz*sy*cx+cz*sx;
 	mpu9250_handle->data.attitude[Z_POS] = cy*cx;
 
 	return ESP_OK;
