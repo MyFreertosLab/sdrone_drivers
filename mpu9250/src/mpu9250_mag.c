@@ -276,8 +276,8 @@ static esp_err_t mpu9250_mag_prepare(mpu9250_handle_t mpu9250_handle) {
     for(uint8_t i = 0; i < 3; i++) {
     	mpu9250_handle->data.mag.cal.scale_factors.array[i] = (((float)(mpu9250_handle->data.mag.cal.asa.array[i] - 128))/2.0f / 128.0f + 1.0f) * (4912.0f / 32768.0f);
     }
-    printf("mag_asa [%d, %d, %d\n", mpu9250_handle->data.mag.cal.asa.array[0], mpu9250_handle->data.mag.cal.asa.array[1], mpu9250_handle->data.mag.cal.asa.array[2]);
-    printf("mag_scale [%5.5f, %5.5f, %5.5f\n", mpu9250_handle->data.mag.cal.scale_factors.array[0], mpu9250_handle->data.mag.cal.scale_factors.array[1], mpu9250_handle->data.mag.cal.scale_factors.array[2]);
+    printf("mag_asa [%d, %d, %d]\n", mpu9250_handle->data.mag.cal.asa.array[0], mpu9250_handle->data.mag.cal.asa.array[1], mpu9250_handle->data.mag.cal.asa.array[2]);
+    printf("mag_scale [%5.5f, %5.5f, %5.5f]\n", mpu9250_handle->data.mag.cal.scale_factors.array[0], mpu9250_handle->data.mag.cal.scale_factors.array[1], mpu9250_handle->data.mag.cal.scale_factors.array[2]);
 
     ESP_ERROR_CHECK(
     		WriteAk8963Register(mpu9250_handle, AK8963_CNTL1, AK8963_PWR_DOWN));

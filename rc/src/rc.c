@@ -164,6 +164,9 @@ esp_err_t rc_start(rc_handle_t rc_handle) {
 			break;
 		}
 	}
+	if(rc_handle->data.raw[RC_THROTTLE] >= 1500 && rc_handle->data.raw[RC_PITCH] <= 910) {
+		rc_handle->data.txrx_signal = RC_TXRX_DATA_NOT_RECEIVED;
+	}
 	ESP_ERROR_CHECK(rc_stop(rc_handle));
 	return ESP_OK;
 }
