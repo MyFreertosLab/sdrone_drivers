@@ -92,6 +92,7 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 	/******************************************************************************************
 	 * GYRO & ACCEL
 	 ******************************************************************************************/
+
     // set Configuration Register
 //	printf("MPU9250: Gyro bandwidth 184Hz\n");
 //    ESP_ERROR_CHECK(mpu9250_write8(mpu9250_handle, MPU9250_CONFIG, 0x01)); // gyro bandwidth 184Hz
@@ -100,10 +101,10 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 
     // set Gyro Configuration Register
 	printf("MPU9250: Gyro +-250deg/sec\n");
-	ESP_ERROR_CHECK(mpu9250_gyro_set_fsr(mpu9250_handle, INV_FSR_250DPS));
+	ESP_ERROR_CHECK(mpu9250_gyro_set_fsr(mpu9250_handle, INV_FSR_1000DPS));
 
     // set Acc Conf1 Register
-	ESP_ERROR_CHECK(mpu9250_acc_set_fsr(mpu9250_handle, INV_FSR_16G));
+	ESP_ERROR_CHECK(mpu9250_acc_set_fsr(mpu9250_handle, INV_FSR_8G));
 
     // set Acc Conf2 Register
 	printf("MPU9250: Accel bandwidth 460Hz\n");
@@ -125,10 +126,6 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 
 	printf("MPU9250: Enable Interrupts\n");
     ESP_ERROR_CHECK(mpu9250_write8(mpu9250_handle, MPU9250_INT_ENABLE, 0x01)); // data ready int
-
-    mpu9250_handle->data.attitude[X_POS] = 0.0f;
-    mpu9250_handle->data.attitude[Y_POS] = 0.0f;
-    mpu9250_handle->data.attitude[Z_POS] = 1.0f;
 
 	// prepare GPIO Interrupt
 	printf("MPU9250: Gpio interrupt pin [%d]\n", mpu9250_handle->int_pin);
@@ -179,10 +176,9 @@ esp_err_t mpu9250_test_connection(mpu9250_handle_t mpu9250_handle) {
 	return (mpu9250_handle->whoami == MPU9250_ID ? ESP_OK : ESP_FAIL);
 
 }
-
 esp_err_t mpu9250_load_raw_data(mpu9250_handle_t mpu9250_handle) {
 	uint8_t buff[26];
-
+	mpu9250_handle->data.timestamp = (uint32_t)(esp_timer_get_time()/1000);
 	esp_err_t ret = mpu9250_read_buff(mpu9250_handle, MPU9250_ACCEL_XOUT_H, buff, 26*8);
 	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_x = ((buff[0] << 8) | buff[1]);
 	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y = ((buff[2] << 8) | buff[3]);
@@ -230,12 +226,27 @@ esp_err_t mpu9250_to_inertial_frame(mpu9250_handle_t mpu9250_handle, mpu9250_flo
 
 	return ESP_OK;
 }
+
+// gravity in body frame
 esp_err_t mpu9250_calc_gravity(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.attitude[X_POS] = -mpu9250_handle->data.sp;
-	mpu9250_handle->data.attitude[Y_POS] = mpu9250_handle->data.cp * mpu9250_handle->data.sr;
-	mpu9250_handle->data.attitude[Z_POS] = mpu9250_handle->data.cp * mpu9250_handle->data.cr;
+	mpu9250_handle->data.attitude[X_POS] = -mpu9250_handle->data.sp * SDRONE_GRAVITY_ACCELERATION;
+	mpu9250_handle->data.attitude[Y_POS] = mpu9250_handle->data.cp * mpu9250_handle->data.sr * SDRONE_GRAVITY_ACCELERATION;
+	mpu9250_handle->data.attitude[Z_POS] = mpu9250_handle->data.cp * mpu9250_handle->data.cr * SDRONE_GRAVITY_ACCELERATION;
 	return ESP_OK;
 }
+
+// accel without gravity in inertial frame
+esp_err_t mpu9250_calc_accel_if(mpu9250_handle_t mpu9250_handle) {
+	float acc_bf[3] = {(mpu9250_handle->data.accel.mss.array[X_POS] - mpu9250_handle->data.attitude[X_POS]),
+			           (mpu9250_handle->data.accel.mss.array[Y_POS] - mpu9250_handle->data.attitude[Y_POS]),
+					   (mpu9250_handle->data.accel.mss.array[Z_POS] - mpu9250_handle->data.attitude[Z_POS])
+					  };
+	mpu9250_handle->data.accel_if[X_POS] = mpu9250_handle->data.cp*acc_bf[X_POS] + mpu9250_handle->data.sp*mpu9250_handle->data.sr*acc_bf[Y_POS] + mpu9250_handle->data.sp*mpu9250_handle->data.cr*acc_bf[Z_POS];
+	mpu9250_handle->data.accel_if[Y_POS] = mpu9250_handle->data.cr*acc_bf[Y_POS] - mpu9250_handle->data.sr*acc_bf[Z_POS];
+	mpu9250_handle->data.accel_if[Z_POS] = -mpu9250_handle->data.sp*acc_bf[X_POS] + mpu9250_handle->data.cp*mpu9250_handle->data.sr*acc_bf[Y_POS] +  + mpu9250_handle->data.sp*mpu9250_handle->data.cr*acc_bf[Z_POS];
+	return ESP_OK;
+}
+
 esp_err_t mpu9250_calc_cos_sin_rpy(mpu9250_handle_t mpu9250_handle) {
 	mpu9250_handle->data.cy = cos(mpu9250_handle->data.gyro.rpy.xyz.z);
 	mpu9250_handle->data.cp = cos(mpu9250_handle->data.gyro.rpy.xyz.y);
@@ -261,7 +272,6 @@ esp_err_t mpu9250_calc_rpy(mpu9250_handle_t mpu9250_handle) {
 
 	float mx_ = mpu9250_handle->data.cp*mx  + mpu9250_handle->data.sp*mpu9250_handle->data.sr*my  + mpu9250_handle->data.sp*mpu9250_handle->data.cr*mz;
 	float my_ = 0                      + mpu9250_handle->data.cr*my                     - mpu9250_handle->data.sr*mz;
-	float mz_ = -mpu9250_handle->data.sp*mx + mpu9250_handle->data.cp*mpu9250_handle->data.sr*my  + mpu9250_handle->data.cp*mpu9250_handle->data.cr*mz;
 
 	mpu9250_handle->data.mag.rpy.xyz.x = mpu9250_handle->data.gyro.rpy.xyz.x;
 	mpu9250_handle->data.mag.rpy.xyz.y = mpu9250_handle->data.gyro.rpy.xyz.y;
@@ -283,6 +293,7 @@ esp_err_t mpu9250_update_state(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_calc_rpy(mpu9250_handle));
 
 	ESP_ERROR_CHECK(mpu9250_calc_gravity(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_calc_accel_if(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_calc_mag_frames(mpu9250_handle));
 	return ESP_OK;
 }

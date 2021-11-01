@@ -117,6 +117,7 @@ static esp_err_t mpu9250_gyro_init_kalman_filter(mpu9250_handle_t mpu9250_handle
 		mpu9250_handle->data.gyro.cal.kalman[i].Q=1.5;
 		mpu9250_handle->data.gyro.cal.kalman[i].K=0.0f;
 		mpu9250_handle->data.gyro.cal.kalman[i].R=mpu9250_handle->data.gyro.cal.var[mpu9250_handle->data.gyro.fsr].array[i];
+		mpu9250_handle->data.gyro.cal.kalman[i].initialized = 0;
 	}
 	return ESP_OK;
 }
@@ -162,6 +163,10 @@ static esp_err_t mpu9250_gyro_filter_data(mpu9250_handle_t mpu9250_handle) {
 	for(uint8_t i = 0; i < 3; i++) {
 		if(mpu9250_handle->data.gyro.cal.kalman[i].P > 0.01) {
 			mpu9250_cb_last(&mpu9250_handle->data.gyro.cb[i], &mpu9250_handle->data.gyro.cal.kalman[i].sample);
+			if(mpu9250_handle->data.gyro.cal.kalman[i].initialized == 0) {
+				mpu9250_handle->data.gyro.cal.kalman[i].X = mpu9250_handle->data.gyro.cal.kalman[i].sample;
+				mpu9250_handle->data.gyro.cal.kalman[i].initialized = 1;
+			}
 			int16_t prevX = mpu9250_handle->data.gyro.cal.kalman[i].X;
 			mpu9250_handle->data.gyro.cal.kalman[i].P = mpu9250_handle->data.gyro.cal.kalman[i].P+mpu9250_handle->data.gyro.cal.kalman[i].Q;
 			mpu9250_handle->data.gyro.cal.kalman[i].K = mpu9250_handle->data.gyro.cal.kalman[i].P/(mpu9250_handle->data.gyro.cal.kalman[i].P+mpu9250_handle->data.gyro.cal.kalman[i].R);
@@ -197,12 +202,10 @@ esp_err_t mpu9250_gyro_init(mpu9250_handle_t mpu9250_handle) {
 	mpu9250_gyro_load_calibration_data(mpu9250_handle); // set offset, var, sqm, P, K
 	mpu9250_gyro_save_offset(mpu9250_handle);
 	mpu9250_gyro_init_kalman_filter(mpu9250_handle); // this reset P,K
-	mpu9250_handle->data.gyro.rpy.xyz.x = 0;
-	mpu9250_handle->data.gyro.rpy.xyz.y = 0;
-	mpu9250_handle->data.gyro.rpy.xyz.z = 0;
-	mpu9250_handle->data.gyro.alfa[X_POS] = 0.0f;
-	mpu9250_handle->data.gyro.alfa[Y_POS] = 0.0f;
-	mpu9250_handle->data.gyro.alfa[Z_POS] = 0.0f;
+	for(uint8_t i = 0; i < 3; i++) {
+		mpu9250_handle->data.gyro.rpy.array[i] = 0;
+		mpu9250_handle->data.gyro.alfa[i] = 0.0f;
+	}
 	return ESP_OK;
 }
 

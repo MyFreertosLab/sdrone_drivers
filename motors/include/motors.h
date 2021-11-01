@@ -75,6 +75,7 @@ typedef struct {
 	motor_t motor[MOTORS_MAX_NUM];
 	float at[3];
 	float thrust;
+	float thrust_ms;
 	uint32_t frequency;
 	uint8_t motors_num;
 	int switch_on_off_pin;

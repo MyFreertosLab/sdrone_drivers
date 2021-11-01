@@ -156,7 +156,7 @@ esp_err_t rc_start(rc_handle_t rc_handle) {
 			}
 			rc_handle->data.txrx_signal = RC_TXRX_TRANSMITTED;
 			vRingbufferReturnItem(rb, (void*) item);
-			if (counter == 4) {
+			if (counter == 10) {
 				break;
 			}
 		} else {

@@ -55,16 +55,12 @@ static esp_err_t mpu9250_acc_save_fsr(mpu9250_handle_t mpu9250_handle) {
 static esp_err_t mpu9250_acc_init_kalman_filter(mpu9250_handle_t mpu9250_handle) {
 	for(uint8_t i = 0; i < 3; i++) {
 		mpu9250_handle->data.accel.cal.kalman[i].X = mpu9250_handle->data.accel.lsb;
-		mpu9250_handle->data.accel.cal.kalman[i].sample=0; // FIXME: inserirci il primo campione di dato reale
+		mpu9250_handle->data.accel.cal.kalman[i].sample=0;
 		mpu9250_handle->data.accel.cal.kalman[i].P=300.0f;
 		mpu9250_handle->data.accel.cal.kalman[i].Q=1.5;
 		mpu9250_handle->data.accel.cal.kalman[i].K=0.0f;
-		mpu9250_handle->data.accel.cal.kalman[i].R=8141.7623; // rilevato con eliche attive
-
-		if(mpu9250_handle->data.accel.cal.kalman[i].R == 0) {
-			//TODO: verificare .. se R è 0 invalida il filtro
-			mpu9250_handle->data.accel.cal.kalman[i].R = 1;
-		}
+		mpu9250_handle->data.accel.cal.kalman[i].R=mpu9250_handle->data.accel.cal.var[mpu9250_handle->data.accel.fsr].array[i]; //8141.7623; // rilevato con eliche attive
+		mpu9250_handle->data.accel.cal.kalman[i].initialized = 0;
 	}
 
 	return ESP_OK;
@@ -168,11 +164,21 @@ static esp_err_t mpu9250_acc_filter_data(mpu9250_handle_t mpu9250_handle) {
 			 *     P(k)=(1-K(k))*P(k)
 			 */
 			mpu9250_cb_means(&mpu9250_handle->data.accel.cb[i], &mpu9250_handle->data.accel.cal.kalman[i].sample);
+			if(mpu9250_handle->data.accel.cal.kalman[i].initialized == 0) {
+				mpu9250_handle->data.accel.cal.kalman[i].X = mpu9250_handle->data.accel.cal.kalman[i].sample;
+				mpu9250_handle->data.accel.cal.kalman[i].initialized = 1;
+			}
 			mpu9250_handle->data.accel.cal.kalman[i].P = mpu9250_handle->data.accel.cal.kalman[i].P+mpu9250_handle->data.accel.cal.kalman[i].Q;
 			mpu9250_handle->data.accel.cal.kalman[i].K = mpu9250_handle->data.accel.cal.kalman[i].P/(mpu9250_handle->data.accel.cal.kalman[i].P+mpu9250_handle->data.accel.cal.kalman[i].R);
 			mpu9250_handle->data.accel.cal.kalman[i].X = mpu9250_handle->data.accel.cal.kalman[i].X + mpu9250_handle->data.accel.cal.kalman[i].K*(mpu9250_handle->data.accel.cal.kalman[i].sample - mpu9250_handle->data.accel.cal.kalman[i].X);
 			mpu9250_handle->data.accel.cal.kalman[i].P = (1-mpu9250_handle->data.accel.cal.kalman[i].K)*mpu9250_handle->data.accel.cal.kalman[i].P;
 		}
+	}
+	return ESP_OK;
+}
+static esp_err_t mpu9250_acc_calc_mss(mpu9250_handle_t mpu9250_handle) {
+	for(uint8_t i = 0; i < 3; i++) {
+		mpu9250_handle->data.accel.mss.array[i]  = (float)mpu9250_handle->data.accel.cal.kalman[i].X/(float)mpu9250_handle->data.accel.lsb*mpu9250_handle->data.accel.acc_g_factor*SDRONE_GRAVITY_ACCELERATION;
 	}
 	return ESP_OK;
 }
@@ -187,7 +193,7 @@ esp_err_t mpu9250_acc_init(mpu9250_handle_t mpu9250_handle) {
 	mpu9250_handle->data.accel.rpy.xyz.x = 0;
 	mpu9250_handle->data.accel.rpy.xyz.y = 0;
 	mpu9250_handle->data.accel.rpy.xyz.z = 0;
-
+	mpu9250_handle->data.accel.acc_g_factor = 1.0f;
 	return ESP_OK;
 }
 
@@ -223,5 +229,6 @@ esp_err_t mpu9250_acc_set_offset(mpu9250_handle_t mpu9250_handle, int16_t xoff, 
 esp_err_t mpu9250_acc_update_state(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_acc_filter_data(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_acc_calc_rpy(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_acc_calc_mss(mpu9250_handle));
 	return ESP_OK;
 }

@@ -14,32 +14,59 @@
 
 #define SDRONE_MAX_STA_CONN       CONFIG_ESP_MAX_STA_CONN
 
+#define MESSAGE_RC      0x01
+#define MESSAGE_RPY     0x02
+#define MESSAGE_ACC     0x03
+#define MESSAGE_W       0x04
+#define MESSAGE_AXIS    0x05
+#define MESSAGE_GRAVITY 0x06
+#define NUM_MESSAGES    0x06
+
 typedef struct {
     httpd_handle_t hd;
     int fd;
 } sdrone_telemetry_gs_socket_t;
 
 typedef struct {
-	int16_t rc_throttle;
-	int16_t rc_roll;
-	int16_t rc_pitch;
-	int16_t rc_yaw;
-	int16_t rc_aux1;
-	int16_t rc_aux2;
-	float roll;
-	float pitch;
-	float yaw;
-	float acc_x;
-	float acc_y;
-	float acc_z;
-	float w_x;
-	float w_y;
-	float w_z;
-	float w_thrust;
-	float ax_x;
-	float ax_y;
-	float ax_z;
-	float ax_thrust;
+	uint16_t m_type;
+	uint32_t m_timestamp;
+	union {
+		struct {
+			int16_t throttle;
+			int16_t roll;
+			int16_t pitch;
+			int16_t yaw;
+			int16_t aux1;
+			int16_t aux2;
+		} rc;
+		struct {
+			float roll;
+			float pitch;
+			float yaw;
+		} rpy;
+		struct {
+			float x;
+			float y;
+			float z;
+		} acc;
+		struct {
+			float x;
+			float y;
+			float z;
+			float thrust;
+		} w;
+		struct {
+			float x;
+			float y;
+			float z;
+			float thrust;
+		} axis;
+		struct {
+			float x;
+			float y;
+			float z;
+		} gravity;
+	};
 } sdrone_telemetry_data_t;
 
 typedef struct {

@@ -5,6 +5,8 @@
 #include <driver/spi_master.h>
 #include "freertos/task.h"
 
+#define SDRONE_GRAVITY_ACCELERATION 9.80665f
+
 #define MPU9250_ID 0x71
 #define X_POS 0
 #define Y_POS 1
@@ -530,6 +532,9 @@ typedef struct mpu9250_accel_s {
     uint16_t lsb;
 	mpu9250_cb_t cb[3]; // circular buffer
 	mpu9250_rpy_t rpy;
+    float acc_g_factor;
+    mpu9250_float_3d_t mss;// accel in m/s^2
+
 } mpu9250_accel_t;
 
 /*********************************
@@ -570,11 +575,13 @@ typedef enum {
         IMU_TXRX_RECEIVED = 2
 } imu_txrx_signal_t;
 typedef struct {
+	uint32_t timestamp;
     mpu9250_raw_data_t raw_data;
     mpu9250_accel_t accel;
     mpu9250_gyro_t gyro;
     mpu9250_mag_t mag;
 	double attitude[3];
+	float accel_if[3]; // RP*(accel - inv(RPY)*g)
 	float cy; // cos(Yaw)
 	float cp; // cos(Pitch)
 	float cr; // cos(Roll)
