@@ -266,7 +266,7 @@ esp_err_t motors_axis_at_to_motors_duty(motors_handle_t motors_handle) {
  *         / \
  *        -----
  */
-#ifdef MOTORS_FRAME_HORIZONTAL_HEXACOPTER
+#ifdef MOTORS_FRAME_TWO_HORIZONTAL_AXIS
 esp_err_t motors_config(motors_handle_t motors_handle) {
 	printf("motors_config_two_horizontal_axis::Started\n");
 
