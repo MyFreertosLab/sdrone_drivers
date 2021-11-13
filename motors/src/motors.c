@@ -354,7 +354,7 @@ esp_err_t motors_init(motors_handle_t motors_handle) {
 #ifdef MOTORS_ENABLE_SWITCHON_SWITCHOFF
 	ESP_ERROR_CHECK(motors_config_switchonoff_pin(motors_handle));
 	ESP_ERROR_CHECK(motors_switchoff(motors_handle));
-    vTaskDelay(500); //delay of 5s (at 100Hz)
+    vTaskDelay(pdMS_TO_TICKS(5000)); //delay of 5s
 #endif
 	ESP_ERROR_CHECK(motors_config(motors_handle));
 
@@ -364,39 +364,39 @@ esp_err_t motors_init(motors_handle_t motors_handle) {
 
 #ifdef MOTORS_ENABLE_SWITCHON_SWITCHOFF
     ESP_ERROR_CHECK(motors_high_duty_motors(motors_handle));
-	ESP_ERROR_CHECK(motors_switchon(motors_handle));
-    vTaskDelay(200); //delay of 2s (at 100Hz)
+//	ESP_ERROR_CHECK(motors_switchon(motors_handle));
+    vTaskDelay(pdMS_TO_TICKS(5000)); //delay of 2s
 #else
 	ESP_ERROR_CHECK(motors_disarm(motors_handle));
 #endif
     ESP_ERROR_CHECK(motors_low_duty_motors(motors_handle));
-    vTaskDelay(200); //delay of 2s (at 100Hz)
+    vTaskDelay(pdMS_TO_TICKS(2000)); //delay of 2s
 	return ESP_OK;
 }
 
 esp_err_t motors_arm(motors_handle_t motors_handle) {
     ESP_ERROR_CHECK(motors_low_duty_motors(motors_handle));
-    motors_handle->status = ON_ARMED;
+    motors_handle->status = MOTORS_ARMED;
 	return ESP_OK;
 }
 
 esp_err_t motors_disarm(motors_handle_t motors_handle) {
     ESP_ERROR_CHECK(motors_low_duty_motors(motors_handle));;
-    motors_handle->status = ON_DISARMED;
+    motors_handle->status = MOTORS_DISARMED;
 	return ESP_OK;
 }
 esp_err_t motors_switchoff(motors_handle_t motors_handle) {
     gpio_set_level(MOTORS_SWITCH_ON_OFF_PIN, MOTORS_SWITCH_OFF);
-    motors_handle->status = OFF;
+    motors_handle->status = MOTORS_OFF;
 	return ESP_OK;
 }
 esp_err_t motors_switchon(motors_handle_t motors_handle) {
     gpio_set_level(MOTORS_SWITCH_ON_OFF_PIN, MOTORS_SWITCH_ON);
-	motors_handle->status = ON_DISARMED;
+	motors_handle->status = MOTORS_DISARMED;
 	return ESP_OK;
 }
 esp_err_t motors_update(motors_handle_t motors_handle) {
-	if(motors_handle->status == ON_ARMED) {
+	if(motors_handle->status == MOTORS_ARMED) {
 	  ESP_ERROR_CHECK(motors_axis_at_to_motors_duty(motors_handle));
       ESP_ERROR_CHECK(motors_update_mcpwm_duty(motors_handle));
 	}

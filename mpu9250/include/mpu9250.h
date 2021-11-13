@@ -581,7 +581,11 @@ typedef struct {
     mpu9250_gyro_t gyro;
     mpu9250_mag_t mag;
 	double attitude[3];
-	float accel_if[3]; // RP*(accel - inv(RPY)*g)
+	uint8_t acc_g_factor_initialized;
+	float accel_without_g[3]; // estimation
+	float accel_without_g_if[3]; // estimation in inertial frame without yaw
+	float vertical_v; // vertical speed estimation
+	float vertical_acc_offset; // vertical acc offset estimation
 	float cy; // cos(Yaw)
 	float cp; // cos(Pitch)
 	float cr; // cos(Roll)

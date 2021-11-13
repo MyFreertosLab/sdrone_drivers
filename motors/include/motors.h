@@ -31,7 +31,7 @@
 //#define MOTORS_DUTY_TO_ACCEL_FACTOR_LOW 0.0602f
 #define MOTORS_DUTY_TO_NEWTON_FACTOR_LOW 0.105f
 #define MOTORS_DUTY_TO_NEWTON_FACTOR_HIGH 0.105f
-#define MOTORS_ACCEL_RANGE 4.4f
+#define MOTORS_ACCEL_RANGE 4.4f // newton for each motor
 #define MOTORS_DUTY_DEAD_RANGE 53.0f
 
 //#define MOTORS_ENABLE_SWITCHON_SWITCHOFF
@@ -57,9 +57,9 @@ typedef enum {
 } motor_position_t;
 
 typedef enum {
-	ON_DISARMED,
-	ON_ARMED,
-	OFF
+	MOTORS_DISARMED,
+	MOTORS_ARMED,
+	MOTORS_OFF
 } motors_status_t;
 
 typedef struct {

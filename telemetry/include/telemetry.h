@@ -20,7 +20,8 @@
 #define MESSAGE_W       0x04
 #define MESSAGE_AXIS    0x05
 #define MESSAGE_GRAVITY 0x06
-#define NUM_MESSAGES    0x06
+#define MESSAGE_V       0x07
+#define NUM_MESSAGES    0x07
 
 typedef struct {
     httpd_handle_t hd;
@@ -66,6 +67,7 @@ typedef struct {
 			float y;
 			float z;
 		} gravity;
+		float vertical_v;
 	};
 } sdrone_telemetry_data_t;
 
