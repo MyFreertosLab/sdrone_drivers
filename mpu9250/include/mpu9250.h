@@ -580,7 +580,7 @@ typedef struct {
     mpu9250_accel_t accel;
     mpu9250_gyro_t gyro;
     mpu9250_mag_t mag;
-	double attitude[3];
+	float gravity_bf[3];
 	uint8_t acc_g_factor_initialized;
 	float accel_without_g[3]; // estimation
 	float accel_without_g_if[3]; // estimation in inertial frame without yaw

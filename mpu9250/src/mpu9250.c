@@ -245,16 +245,16 @@ esp_err_t mpu9250_to_inertial_frame_without_yaw(mpu9250_handle_t mpu9250_handle,
 
 // gravity in body frame (negative)
 esp_err_t mpu9250_calc_gravity(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.attitude[X_POS] = mpu9250_handle->data.sp * SDRONE_GRAVITY_ACCELERATION;
-	mpu9250_handle->data.attitude[Y_POS] = -mpu9250_handle->data.cp * mpu9250_handle->data.sr * SDRONE_GRAVITY_ACCELERATION;
-	mpu9250_handle->data.attitude[Z_POS] = -mpu9250_handle->data.cp * mpu9250_handle->data.cr * SDRONE_GRAVITY_ACCELERATION;
+	mpu9250_handle->data.gravity_bf[X_POS] = mpu9250_handle->data.sp * SDRONE_GRAVITY_ACCELERATION;
+	mpu9250_handle->data.gravity_bf[Y_POS] = -mpu9250_handle->data.cp * mpu9250_handle->data.sr * SDRONE_GRAVITY_ACCELERATION;
+	mpu9250_handle->data.gravity_bf[Z_POS] = -mpu9250_handle->data.cp * mpu9250_handle->data.cr * SDRONE_GRAVITY_ACCELERATION;
 	return ESP_OK;
 }
 
 esp_err_t mpu9250_calc_accel_without_g(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.accel_without_g[X_POS] = mpu9250_handle->data.accel.mss.array[X_POS] + mpu9250_handle->data.attitude[X_POS];
-	mpu9250_handle->data.accel_without_g[Y_POS] = mpu9250_handle->data.accel.mss.array[Y_POS] + mpu9250_handle->data.attitude[Y_POS];
-	mpu9250_handle->data.accel_without_g[Z_POS] = mpu9250_handle->data.accel.mss.array[Z_POS] + mpu9250_handle->data.attitude[Z_POS];
+	mpu9250_handle->data.accel_without_g[X_POS] = mpu9250_handle->data.accel.mss.array[X_POS] + mpu9250_handle->data.gravity_bf[X_POS];
+	mpu9250_handle->data.accel_without_g[Y_POS] = mpu9250_handle->data.accel.mss.array[Y_POS] + mpu9250_handle->data.gravity_bf[Y_POS];
+	mpu9250_handle->data.accel_without_g[Z_POS] = mpu9250_handle->data.accel.mss.array[Z_POS] + mpu9250_handle->data.gravity_bf[Z_POS];
 	ESP_ERROR_CHECK(mpu9250_to_inertial_frame_without_yaw(mpu9250_handle, mpu9250_handle->data.accel_without_g, mpu9250_handle->data.accel_without_g_if));
 	mpu9250_handle->data.accel_without_g_if[Z_POS] = mpu9250_handle->data.accel_without_g_if[Z_POS] - mpu9250_handle->data.vertical_acc_offset;
 	return ESP_OK;

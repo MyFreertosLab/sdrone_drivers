@@ -21,7 +21,10 @@
 #define MESSAGE_AXIS    0x05
 #define MESSAGE_GRAVITY 0x06
 #define MESSAGE_V       0x07
-#define NUM_MESSAGES    0x07
+#define MESSAGE_X       0x08
+#define MESSAGE_U       0x09
+#define MESSAGE_Y       0x0A
+#define NUM_MESSAGES    0x0A
 
 typedef struct {
     httpd_handle_t hd;
@@ -55,7 +58,25 @@ typedef struct {
 			float y;
 			float z;
 			float thrust;
+		} x;
+		struct {
+			float x;
+			float y;
+			float z;
+			float thrust;
+		} u;
+		struct {
+			float x;
+			float y;
+			float z;
+			float thrust;
 		} w;
+		struct {
+			float x;
+			float y;
+			float z;
+			float thrust;
+		} y;
 		struct {
 			float x;
 			float y;
