@@ -223,7 +223,7 @@ esp_err_t motors_config(motors_handle_t motors_handle) {
 
        // Config motor front left
        motors_handle->motor[2].enabled = true;
-       motors_handle->motor[2].pin = GPIO_NUM_4; // j13 on board // provvisorio .. da rimettere su GPIO_NUM_19 (j7 on board)
+       motors_handle->motor[2].pin = GPIO_NUM_5; // j15 on board // provvisorio .. da rimettere su GPIO_NUM_19 (j7 on board)
        motors_handle->motor[2].position = FRONT_LEFT;
        motors_handle->motor[2].num = 3;
 

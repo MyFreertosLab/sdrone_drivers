@@ -264,13 +264,16 @@ uint16_t speed_counter = 0;
 float vv_start = 0;
 // FIXME: compensare con altro sensore (barometer and/or time of fly and/or gps) ..
 esp_err_t mpu9250_calc_vertical_v(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.vertical_v += (mpu9250_handle->data.accel_without_g_if[Z_POS] / 500.0f);
+	int32_t vi = (mpu9250_handle->data.accel_without_g_if[Z_POS]*1000 / 500);
+	float v = (float)vi/1000.0f;
+	mpu9250_handle->data.vertical_v += v;
 	speed_counter++;
-	speed_counter %= 500;
+	speed_counter %= 100;
 	if(speed_counter == 0) {
+//		printf("V=[%5.5f]\n", v);
 		float vv_diff = mpu9250_handle->data.vertical_v - vv_start;
-		if(vv_diff > - 0.1 && vv_diff < 0.1 ) {
-			mpu9250_handle->data.vertical_v = 0.0f;
+		if(vv_diff > - 0.05 && vv_diff < 0.05 ) {
+			mpu9250_handle->data.vertical_v = mpu9250_handle->data.vertical_v/2.0f;
 		}
 		vv_start = mpu9250_handle->data.vertical_v;
 	}

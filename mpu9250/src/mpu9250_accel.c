@@ -157,8 +157,8 @@ static esp_err_t mpu9250_acc_filter_data(mpu9250_handle_t mpu9250_handle) {
 	for(uint8_t i = 0; i < 3; i++) {
 		if(mpu9250_handle->data.accel.cal.kalman[i].P > 0.01) {
 			/*
-			 *     X(k)=X(k-1)
-			 *     P(k)=P(k-1)+Q
+			 *     X(k)=X(k-1), X(0)=sample
+			 *     P(k)=P(k-1)+Q, P(0)=300.0f
 			 *     K(k)=P(k)/(P(k)+R)
 			 *     X(k)=X(k)+K(k)*(Sample(k)-X(k))
 			 *     P(k)=(1-K(k))*P(k)
