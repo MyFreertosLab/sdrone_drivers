@@ -37,14 +37,18 @@
 #endif
 #endif
 
-#define MOTORS_DUTY_MAX_ZERO  52
-#define MOTORS_DUTY_MAX_LOW   66
-#define MOTORS_DUTY_MAX      100
-//#define MOTORS_DUTY_TO_ACCEL_FACTOR_LOW 0.0602f
-#define MOTORS_DUTY_TO_NEWTON_FACTOR_LOW 0.105f
-#define MOTORS_DUTY_TO_NEWTON_FACTOR_HIGH 0.105f
-#define MOTORS_ACCEL_RANGE 4.4f // newton for each motor
-#define MOTORS_DUTY_DEAD_RANGE 53.0f
+#define MOTORS_THRUST_MAX  4.4f
+#define MOTORS_THRUST_MIN  0.0f
+#define MOTORS_THRUST_RANGE (MOTORS_THRUST_MAX - MOTORS_THRUST_MIN) // m/s^2 for each motor
+
+#define MOTORS_DUTY_MIN (0.001f*(float)MOTORS_PWM_FREQUENCY*100.0f)
+#define MOTORS_DUTY_MAX (0.002f*(float)MOTORS_PWM_FREQUENCY*100.0f)
+#define MOTORS_DUTY_RANGE (MOTORS_DUTY_MAX - MOTORS_DUTY_MIN)
+
+#define MOTORS_THRUST_TO_DUTY_FACTOR (MOTORS_DUTY_RANGE/MOTORS_THRUST_RANGE)
+#define MOTORS_DUTY_TO_THRUST_FACTOR (MOTORS_THRUST_RANGE/MOTORS_DUTY_RANGE)
+#define MOTORS_THRUST_TO_DUTY(thrust) ((thrust-MOTORS_THRUST_MIN)*MOTORS_THRUST_TO_DUTY_FACTOR+MOTORS_DUTY_MIN)
+#define MOTORS_DUTY_TO_THRUST(duty) ((duty-MOTORS_DUTY_MIN)*MOTORS_DUTY_TO_THRUST_FACTOR+MOTORS_THRUST_MIN)
 
 //#define MOTORS_ENABLE_SWITCHON_SWITCHOFF
 
@@ -102,7 +106,7 @@ esp_err_t motors_disarm(motors_handle_t motors_handle);
 esp_err_t motors_switchoff(motors_handle_t motors_handle);
 esp_err_t motors_switchon(motors_handle_t motors_handle);
 esp_err_t motors_update(motors_handle_t motors_handle);
-esp_err_t motors_newton_to_duty(float newton, float* duty);
-esp_err_t motors_duty_to_newton(float duty, float* newton);
+esp_err_t motors_thrust_to_duty(float newton, float* duty);
+esp_err_t motors_duty_to_thrust(float duty, float* newton);
 
 #endif /* COMPONENTS_MOTORS_INCLUDE_MOTORS_H_ */

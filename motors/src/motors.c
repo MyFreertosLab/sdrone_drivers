@@ -16,7 +16,7 @@ static mcpwm_timer_t motors_timers[MOTORS_MAX_NUM] = {
 };
 
 float motors_get_duty_low(motors_handle_t motors_handle) {
-    return motors_handle->frequency/10.;
+    return MOTORS_DUTY_MIN;
 }
 float motors_get_duty_high(motors_handle_t motors_handle) {
     return 2.0*motors_get_duty_low(motors_handle);
@@ -246,14 +246,14 @@ esp_err_t motors_axis_at_to_motors_duty(motors_handle_t motors_handle) {
 	// motors 1 & 2 are counterclockwise
 	// motors 3 & 4 are clockwise
 	if(motors_handle->thrust >= 0.20f) {
-		at[0] = (- motors_handle->at[0] - motors_handle->at[1] - motors_handle->at[2])*0.25f + motors_handle->thrust;
-		at[1] = (  motors_handle->at[0] + motors_handle->at[1] - motors_handle->at[2])*0.25f + motors_handle->thrust;
-		at[2] = (  motors_handle->at[0] - motors_handle->at[1] + motors_handle->at[2])*0.25f + motors_handle->thrust;
-		at[3] = (- motors_handle->at[0] + motors_handle->at[1] + motors_handle->at[2])*0.25f + motors_handle->thrust;
+		at[0] = (- motors_handle->at[0] - motors_handle->at[1] - motors_handle->at[2] + motors_handle->thrust)*0.25f;
+		at[1] = (  motors_handle->at[0] + motors_handle->at[1] - motors_handle->at[2] + motors_handle->thrust)*0.25f;
+		at[2] = (  motors_handle->at[0] - motors_handle->at[1] + motors_handle->at[2] + motors_handle->thrust)*0.25f;
+		at[3] = (- motors_handle->at[0] + motors_handle->at[1] + motors_handle->at[2] + motors_handle->thrust)*0.25f;
 	}
 
 	for(uint8_t i = 0; i < 4; i++) {
-		ESP_ERROR_CHECK(motors_newton_to_duty(at[i], &motors_handle->motor[i].duty_cycle));
+		ESP_ERROR_CHECK(motors_thrust_to_duty(at[i], &motors_handle->motor[i].duty_cycle));
 	}
 
 	return ESP_OK;
@@ -314,37 +314,23 @@ esp_err_t motors_config_switchonoff_pin(motors_handle_t motors_handle) {
 /************************************************************************
  ****************** A P I  I M P L E M E N T A T I O N ******************
  ************************************************************************/
-esp_err_t motors_newton_to_duty(float newton, float* duty) {
-	float _newton = newton;
+esp_err_t motors_thrust_to_duty(float newton, float* duty) {
 	float _duty = *duty;
 
-	// limit newton in [0,MOTORS_ACCEL_RANGE]
-	if(_newton < 0.0f) {
-		_newton = 0.0f;
-	} else if(_newton > MOTORS_ACCEL_RANGE) {
-		_newton = MOTORS_ACCEL_RANGE;
+	*duty = _duty*0.8 + 0.2*MOTORS_THRUST_TO_DUTY(newton);
+	if(*duty < MOTORS_DUTY_MIN) {
+		*duty = MOTORS_DUTY_MIN;
+	} else if(*duty > MOTORS_DUTY_MAX) {
+		*duty = MOTORS_DUTY_MAX;
 	}
 
 	// change duty in soft mode (80%old and 20% new at 490Hz)
 	// without this trick can breakout the motors
-	if(_newton <= (MOTORS_DUTY_DEAD_RANGE - MOTORS_DUTY_MAX_ZERO)*MOTORS_DUTY_TO_NEWTON_FACTOR_LOW) {
-		*duty = 0.8f*_duty + 0.2f*MOTORS_DUTY_MAX_ZERO;
-	} else if(_newton <= (MOTORS_DUTY_MAX_LOW - MOTORS_DUTY_MAX_ZERO)*MOTORS_DUTY_TO_NEWTON_FACTOR_LOW) {
-		*duty = 0.8f*_duty + 0.2f*(MOTORS_DUTY_MAX_ZERO + _newton/MOTORS_DUTY_TO_NEWTON_FACTOR_LOW);
-	} else {
-		*duty = 0.8f*_duty + 0.2f*(MOTORS_DUTY_MAX_LOW + (_newton - (MOTORS_DUTY_MAX_LOW - MOTORS_DUTY_MAX_ZERO)*MOTORS_DUTY_TO_NEWTON_FACTOR_LOW)/MOTORS_DUTY_TO_NEWTON_FACTOR_HIGH);
-	}
 	return ESP_OK;
 }
 
-esp_err_t motors_duty_to_newton(float duty, float* newton) {
-	if(duty <= MOTORS_DUTY_DEAD_RANGE) {
-		*newton = 0.0f;
-	} else if(duty < MOTORS_DUTY_MAX_LOW) {
-		*newton = (duty - MOTORS_DUTY_MAX_ZERO)*MOTORS_DUTY_TO_NEWTON_FACTOR_LOW;
-	} else {
-		*newton = (MOTORS_DUTY_MAX_LOW-MOTORS_DUTY_MAX_ZERO)*MOTORS_DUTY_TO_NEWTON_FACTOR_LOW + (duty - MOTORS_DUTY_MAX_LOW)*MOTORS_DUTY_TO_NEWTON_FACTOR_HIGH;
-	}
+esp_err_t motors_duty_to_thrust(float duty, float* newton) {
+	*newton = MOTORS_DUTY_TO_THRUST(duty);
 	return ESP_OK;
 }
 
