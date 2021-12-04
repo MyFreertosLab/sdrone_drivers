@@ -218,41 +218,41 @@ esp_err_t mpu9250_load_raw_data(mpu9250_handle_t mpu9250_handle) {
 }
 
 // source vector from intertial frame to body frame
-esp_err_t mpu9250_to_body_frame(mpu9250_handle_t mpu9250_handle, float* source, float* destination) {
-	destination[X_POS] = (mpu9250_handle->data.cy*mpu9250_handle->data.cp)*source[X_POS] + (mpu9250_handle->data.sy*mpu9250_handle->data.cp)*source[Y_POS] + (-mpu9250_handle->data.sp)*source[Z_POS];
-	destination[Y_POS] = (mpu9250_handle->data.cy*mpu9250_handle->data.sp*mpu9250_handle->data.sr - mpu9250_handle->data.sy*mpu9250_handle->data.cr)*source[X_POS] + (mpu9250_handle->data.sy*mpu9250_handle->data.sp*mpu9250_handle->data.sr + mpu9250_handle->data.cy*mpu9250_handle->data.cr)*source[Y_POS] + (mpu9250_handle->data.cp*mpu9250_handle->data.sr)*source[Z_POS];
-	destination[Z_POS] = (mpu9250_handle->data.cy*mpu9250_handle->data.sp*mpu9250_handle->data.cr+mpu9250_handle->data.sy*mpu9250_handle->data.sr)*source[X_POS]   + (mpu9250_handle->data.sy*mpu9250_handle->data.sp*mpu9250_handle->data.cr-mpu9250_handle->data.cy*mpu9250_handle->data.sr)*source[Y_POS]   + (mpu9250_handle->data.cp*mpu9250_handle->data.cr)*source[Z_POS];
+esp_err_t mpu9250_to_body_frame(mpu9250_cossin_t* cossin, float* source, float* destination) {
+	destination[X_POS] = (cossin->cy*cossin->cp)*source[X_POS] + (cossin->sy*cossin->cp)*source[Y_POS] + (-cossin->sp)*source[Z_POS];
+	destination[Y_POS] = (cossin->cy*cossin->sp*cossin->sr - cossin->sy*cossin->cr)*source[X_POS] + (cossin->sy*cossin->sp*cossin->sr + cossin->cy*cossin->cr)*source[Y_POS] + (cossin->cp*cossin->sr)*source[Z_POS];
+	destination[Z_POS] = (cossin->cy*cossin->sp*cossin->cr+cossin->sy*cossin->sr)*source[X_POS]   + (cossin->sy*cossin->sp*cossin->cr-cossin->cy*cossin->sr)*source[Y_POS]   + (cossin->cp*cossin->cr)*source[Z_POS];
 	return ESP_OK;
 }
 
 // source vector from intertial frame to body frame without yaw
-esp_err_t mpu9250_to_body_frame_without_yaw(mpu9250_handle_t mpu9250_handle, float* source, float* destination) {
-	destination[X_POS] = mpu9250_handle->data.cp*source[X_POS] - mpu9250_handle->data.sp*source[Z_POS];
-	destination[Y_POS] = mpu9250_handle->data.sp*mpu9250_handle->data.sr*source[X_POS] + mpu9250_handle->data.cr*source[Y_POS] + mpu9250_handle->data.cp*mpu9250_handle->data.sr*source[Z_POS];
-	destination[Z_POS] = mpu9250_handle->data.sp*mpu9250_handle->data.cr*source[X_POS] - mpu9250_handle->data.sr*source[Y_POS] + mpu9250_handle->data.cp*mpu9250_handle->data.cr*source[Z_POS];
+esp_err_t mpu9250_to_body_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination) {
+	destination[X_POS] = cossin->cp*source[X_POS] - cossin->sp*source[Z_POS];
+	destination[Y_POS] = cossin->sp*cossin->sr*source[X_POS] + cossin->cr*source[Y_POS] + cossin->cp*cossin->sr*source[Z_POS];
+	destination[Z_POS] = cossin->sp*cossin->cr*source[X_POS] - cossin->sr*source[Y_POS] + cossin->cp*cossin->cr*source[Z_POS];
 	return ESP_OK;
 }
 
 // source vector from body frame to intertial frame
-esp_err_t mpu9250_to_inertial_frame(mpu9250_handle_t mpu9250_handle, float* source, float* destination) {
-	destination[X_POS] = (mpu9250_handle->data.cy*mpu9250_handle->data.cp)*source[X_POS] + (mpu9250_handle->data.cy*mpu9250_handle->data.sp*mpu9250_handle->data.sr - mpu9250_handle->data.sy*mpu9250_handle->data.cr)*source[Y_POS] + (mpu9250_handle->data.cy*mpu9250_handle->data.sp*mpu9250_handle->data.cr+mpu9250_handle->data.sy*mpu9250_handle->data.sr)*source[Z_POS];
-	destination[Y_POS] = (mpu9250_handle->data.sy*mpu9250_handle->data.cp)*source[X_POS] + (mpu9250_handle->data.sy*mpu9250_handle->data.sp*mpu9250_handle->data.sr + mpu9250_handle->data.cy*mpu9250_handle->data.cr)*source[Y_POS] + (mpu9250_handle->data.sy*mpu9250_handle->data.sp*mpu9250_handle->data.cr-mpu9250_handle->data.cy*mpu9250_handle->data.sr)*source[Z_POS];
-	destination[Z_POS] = (-mpu9250_handle->data.sp)*source[X_POS] + (mpu9250_handle->data.cp*mpu9250_handle->data.sr)*source[Y_POS]                                                            + (mpu9250_handle->data.cp*mpu9250_handle->data.cr)*source[Z_POS];
+esp_err_t mpu9250_to_inertial_frame(mpu9250_cossin_t* cossin, float* source, float* destination) {
+	destination[X_POS] = (cossin->cy*cossin->cp)*source[X_POS] + (cossin->cy*cossin->sp*cossin->sr - cossin->sy*cossin->cr)*source[Y_POS] + (cossin->cy*cossin->sp*cossin->cr+cossin->sy*cossin->sr)*source[Z_POS];
+	destination[Y_POS] = (cossin->sy*cossin->cp)*source[X_POS] + (cossin->sy*cossin->sp*cossin->sr + cossin->cy*cossin->cr)*source[Y_POS] + (cossin->sy*cossin->sp*cossin->cr-cossin->cy*cossin->sr)*source[Z_POS];
+	destination[Z_POS] = (-cossin->sp)*source[X_POS] + (cossin->cp*cossin->sr)*source[Y_POS]                                                            + (cossin->cp*cossin->cr)*source[Z_POS];
 	return ESP_OK;
 }
 // source vector from body frame to inertial frame without yaw
-esp_err_t mpu9250_to_inertial_frame_without_yaw(mpu9250_handle_t mpu9250_handle, float* source, float* destination) {
-	destination[X_POS] = mpu9250_handle->data.cp*source[X_POS] + mpu9250_handle->data.sp*mpu9250_handle->data.sr*source[Y_POS] + mpu9250_handle->data.sp*mpu9250_handle->data.cr*source[Z_POS];
-	destination[Y_POS] = mpu9250_handle->data.cr*source[Y_POS] - mpu9250_handle->data.sr*source[Z_POS];
-	destination[Z_POS] = -mpu9250_handle->data.sp*source[X_POS] + mpu9250_handle->data.cp*mpu9250_handle->data.sr*source[Y_POS] + mpu9250_handle->data.cp*mpu9250_handle->data.cr*source[Z_POS];
+esp_err_t mpu9250_to_inertial_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination) {
+	destination[X_POS] = cossin->cp*source[X_POS] + cossin->sp*cossin->sr*source[Y_POS] + cossin->sp*cossin->cr*source[Z_POS];
+	destination[Y_POS] = cossin->cr*source[Y_POS] - cossin->sr*source[Z_POS];
+	destination[Z_POS] = -cossin->sp*source[X_POS] + cossin->cp*cossin->sr*source[Y_POS] + cossin->cp*cossin->cr*source[Z_POS];
 	return ESP_OK;
 }
 
 // gravity in body frame (negative)
 esp_err_t mpu9250_calc_gravity(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.gravity_bf[X_POS] = mpu9250_handle->data.sp * SDRONE_GRAVITY_ACCELERATION;
-	mpu9250_handle->data.gravity_bf[Y_POS] = -mpu9250_handle->data.cp * mpu9250_handle->data.sr * SDRONE_GRAVITY_ACCELERATION;
-	mpu9250_handle->data.gravity_bf[Z_POS] = -mpu9250_handle->data.cp * mpu9250_handle->data.cr * SDRONE_GRAVITY_ACCELERATION;
+	mpu9250_handle->data.gravity_bf[X_POS] = mpu9250_handle->data.cossin_actual.sp * SDRONE_GRAVITY_ACCELERATION;
+	mpu9250_handle->data.gravity_bf[Y_POS] = -mpu9250_handle->data.cossin_actual.cp * mpu9250_handle->data.cossin_actual.sr * SDRONE_GRAVITY_ACCELERATION;
+	mpu9250_handle->data.gravity_bf[Z_POS] = -mpu9250_handle->data.cossin_actual.cp * mpu9250_handle->data.cossin_actual.cr * SDRONE_GRAVITY_ACCELERATION;
 	return ESP_OK;
 }
 
@@ -260,7 +260,7 @@ esp_err_t mpu9250_calc_accel_without_g(mpu9250_handle_t mpu9250_handle) {
 	mpu9250_handle->data.accel_without_g[X_POS] = mpu9250_handle->data.accel.mss.array[X_POS] + mpu9250_handle->data.gravity_bf[X_POS];
 	mpu9250_handle->data.accel_without_g[Y_POS] = mpu9250_handle->data.accel.mss.array[Y_POS] + mpu9250_handle->data.gravity_bf[Y_POS];
 	mpu9250_handle->data.accel_without_g[Z_POS] = mpu9250_handle->data.accel.mss.array[Z_POS] + mpu9250_handle->data.gravity_bf[Z_POS];
-	ESP_ERROR_CHECK(mpu9250_to_inertial_frame_without_yaw(mpu9250_handle, mpu9250_handle->data.accel_without_g, mpu9250_handle->data.accel_without_g_if));
+	ESP_ERROR_CHECK(mpu9250_to_inertial_frame_without_yaw(&mpu9250_handle->data.cossin_actual, mpu9250_handle->data.accel_without_g, mpu9250_handle->data.accel_without_g_if));
 	mpu9250_handle->data.accel_without_g_if[Z_POS] = mpu9250_handle->data.accel_without_g_if[Z_POS] - mpu9250_handle->data.vertical_acc_offset;
 	return ESP_OK;
 }
@@ -286,12 +286,12 @@ esp_err_t mpu9250_calc_vertical_v(mpu9250_handle_t mpu9250_handle) {
 }
 
 esp_err_t mpu9250_calc_cos_sin_rpy(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.cy = cos(mpu9250_handle->data.gyro.rpy.xyz.z);
-	mpu9250_handle->data.cp = cos(mpu9250_handle->data.gyro.rpy.xyz.y);
-	mpu9250_handle->data.cr = cos(mpu9250_handle->data.gyro.rpy.xyz.x);
-	mpu9250_handle->data.sy = sin(mpu9250_handle->data.gyro.rpy.xyz.z);
-	mpu9250_handle->data.sp = sin(mpu9250_handle->data.gyro.rpy.xyz.y);
-	mpu9250_handle->data.sr = sin(mpu9250_handle->data.gyro.rpy.xyz.x);
+	mpu9250_handle->data.cossin_actual.cy = cos(mpu9250_handle->data.gyro.rpy.xyz.z);
+	mpu9250_handle->data.cossin_actual.cp = cos(mpu9250_handle->data.gyro.rpy.xyz.y);
+	mpu9250_handle->data.cossin_actual.cr = cos(mpu9250_handle->data.gyro.rpy.xyz.x);
+	mpu9250_handle->data.cossin_actual.sy = sin(mpu9250_handle->data.gyro.rpy.xyz.z);
+	mpu9250_handle->data.cossin_actual.sp = sin(mpu9250_handle->data.gyro.rpy.xyz.y);
+	mpu9250_handle->data.cossin_actual.sr = sin(mpu9250_handle->data.gyro.rpy.xyz.x);
 
 	return ESP_OK;
 }
@@ -308,8 +308,8 @@ esp_err_t mpu9250_calc_rpy(mpu9250_handle_t mpu9250_handle) {
 	float my = mpu9250_handle->data.mag.body_frame_data.array[Y_POS];
 	float mz = mpu9250_handle->data.mag.body_frame_data.array[Z_POS];
 
-	float mx_ = mpu9250_handle->data.cp*mx  + mpu9250_handle->data.sp*mpu9250_handle->data.sr*my  + mpu9250_handle->data.sp*mpu9250_handle->data.cr*mz;
-	float my_ = 0                      + mpu9250_handle->data.cr*my                     - mpu9250_handle->data.sr*mz;
+	float mx_ = mpu9250_handle->data.cossin_actual.cp*mx  + mpu9250_handle->data.cossin_actual.sp*mpu9250_handle->data.cossin_actual.sr*my  + mpu9250_handle->data.cossin_actual.sp*mpu9250_handle->data.cossin_actual.cr*mz;
+	float my_ = 0                      + mpu9250_handle->data.cossin_actual.cr*my                     - mpu9250_handle->data.cossin_actual.sr*mz;
 
 	mpu9250_handle->data.mag.rpy.xyz.x = mpu9250_handle->data.gyro.rpy.xyz.x;
 	mpu9250_handle->data.mag.rpy.xyz.y = mpu9250_handle->data.gyro.rpy.xyz.y;
@@ -320,7 +320,7 @@ esp_err_t mpu9250_calc_rpy(mpu9250_handle_t mpu9250_handle) {
 
 esp_err_t mpu9250_calc_mag_frames(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_mag_scale_data_in_body_frame(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_to_inertial_frame(mpu9250_handle, mpu9250_handle->data.mag.body_frame_data.array, mpu9250_handle->data.mag.inertial_frame_data.array));
+	ESP_ERROR_CHECK(mpu9250_to_inertial_frame(&mpu9250_handle->data.cossin_actual, mpu9250_handle->data.mag.body_frame_data.array, mpu9250_handle->data.mag.inertial_frame_data.array));
 	return ESP_OK;
 }
 

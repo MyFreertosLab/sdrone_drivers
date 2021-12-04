@@ -575,6 +575,14 @@ typedef enum {
         IMU_TXRX_RECEIVED = 2
 } imu_txrx_signal_t;
 typedef struct {
+	float cy; // cos(Yaw)
+	float cp; // cos(Pitch)
+	float cr; // cos(Roll)
+	float sy; // sin(Yaw)
+	float sp; // sin(Pitch)
+	float sr; // sin(Roll)
+} mpu9250_cossin_t;
+typedef struct {
 	uint32_t timestamp;
     mpu9250_raw_data_t raw_data;
     mpu9250_accel_t accel;
@@ -588,12 +596,7 @@ typedef struct {
 	float vertical_v; // vertical speed estimation
 	float vertical_acc_offset; // vertical acc offset estimation
 	float yaw_reference;
-	float cy; // cos(Yaw)
-	float cp; // cos(Pitch)
-	float cr; // cos(Roll)
-	float sy; // sin(Yaw)
-	float sp; // sin(Pitch)
-	float sr; // sin(Roll)
+	mpu9250_cossin_t cossin_actual;
 	volatile imu_txrx_signal_t txrx_signal;
 } mpu9250_data_t;
 
@@ -631,4 +634,10 @@ esp_err_t mpu9250_load_int_status(mpu9250_handle_t mpu9250_handle);
 esp_err_t mpu9250_load_raw_data(mpu9250_handle_t mpu9250_handle);
 esp_err_t mpu9250_load_data(mpu9250_handle_t mpu9250_handle);
 
+// utilities
+// FIXME: create a library for math calc
+esp_err_t mpu9250_to_body_frame(mpu9250_cossin_t* cossin, float* source, float* destination);
+esp_err_t mpu9250_to_body_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination);
+esp_err_t mpu9250_to_inertial_frame(mpu9250_cossin_t* cossin, float* source, float* destination);
+esp_err_t mpu9250_to_inertial_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination);
 #endif // _MPU9250_H_
