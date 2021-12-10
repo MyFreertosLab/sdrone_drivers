@@ -594,7 +594,6 @@ typedef struct {
 	float accel_without_g[3]; // linear accel in body frame coordinates
 	float accel_without_g_if[3]; // estimation in inertial frame without yaw
 	float vertical_acc_offset; // vertical acc offset estimation
-	float yaw_reference;
 	mpu9250_cossin_t cossin_actual;
 	volatile imu_txrx_signal_t txrx_signal;
 } mpu9250_data_t;

@@ -35,7 +35,7 @@ static rc_ibus_config_t rc_ibus_config = {
 				  .data_bits = UART_DATA_8_BITS,
 				  .parity = UART_PARITY_DISABLE,
 				  .stop_bits = UART_STOP_BITS_1,
-				  .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+				  .flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS, //UART_HW_FLOWCTRL_DISABLE,
 				  .source_clk = UART_SCLK_APB,
 				 }
 };
@@ -59,8 +59,11 @@ static void rc_ibus_read_data(rc_handle_t rc_handle) {
 	uint16_t chan_val[15] = { 0 };
 
 	// read data
-	uart_flush(RC_IBUS_UART_NUM);
-	const int rxBytes = uart_read_bytes(RC_IBUS_UART_NUM,
+//	uart_flush_input(RC_IBUS_UART_NUM);
+//	int length = 0;
+//	ESP_ERROR_CHECK(uart_get_buffered_data_len(RC_IBUS_UART_NUM, (size_t*)&length));
+//
+	int rxBytes = uart_read_bytes(RC_IBUS_UART_NUM,
 	RC_IBUS_DEVICE_CONFIG(rc_handle)->buffer, RC_IBUS_BUF_SIZE,
 			pdMS_TO_TICKS(2000));
 
@@ -156,6 +159,8 @@ esp_err_t rc_ibus_start(rc_handle_t rc_handle) {
 }
 
 esp_err_t rc_ibus_stop(rc_handle_t rc_handle) {
+	uart_flush_input(RC_IBUS_UART_NUM);
+    uart_driver_delete(RC_IBUS_UART_NUM);
 	return ESP_OK;
 }
 

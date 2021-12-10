@@ -65,7 +65,6 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_spi_init(mpu9250_handle));
 	mpu9250_handle->data_ready_task_handle=xTaskGetCurrentTaskHandle();
 
-	mpu9250_handle->data.yaw_reference = 0.0f;
 	mpu9250_handle->data.speed_if[X_POS] = 0.0f;
 	mpu9250_handle->data.speed_if[Y_POS] = 0.0f;
 	mpu9250_handle->data.speed_if[Z_POS] = 0.0f;
