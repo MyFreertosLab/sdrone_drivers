@@ -590,10 +590,9 @@ typedef struct {
     mpu9250_mag_t mag;
 	float gravity_bf[3];
 	uint8_t acc_g_factor_initialized;
-	float speed_bf[3]; // linear speed in body frame coordinates
+	float speed_if[3]; // linear speed in inertial frame coordinates
 	float accel_without_g[3]; // linear accel in body frame coordinates
 	float accel_without_g_if[3]; // estimation in inertial frame without yaw
-	float vertical_v; // vertical speed estimation
 	float vertical_acc_offset; // vertical acc offset estimation
 	float yaw_reference;
 	mpu9250_cossin_t cossin_actual;

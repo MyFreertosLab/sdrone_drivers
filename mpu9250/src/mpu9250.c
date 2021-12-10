@@ -66,9 +66,9 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 	mpu9250_handle->data_ready_task_handle=xTaskGetCurrentTaskHandle();
 
 	mpu9250_handle->data.yaw_reference = 0.0f;
-	mpu9250_handle->data.speed_bf[X_POS] = 0.0f;
-	mpu9250_handle->data.speed_bf[Y_POS] = 0.0f;
-	mpu9250_handle->data.speed_bf[Z_POS] = 0.0f;
+	mpu9250_handle->data.speed_if[X_POS] = 0.0f;
+	mpu9250_handle->data.speed_if[Y_POS] = 0.0f;
+	mpu9250_handle->data.speed_if[Z_POS] = 0.0f;
 
 	for(uint8_t i = 0; i < 3; i++) {
 		mpu9250_cb_init(&mpu9250_handle->data.accel.cb[i]);
@@ -98,7 +98,9 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 	 * GYRO & ACCEL
 	 ******************************************************************************************/
 	mpu9250_handle->data.acc_g_factor_initialized = 0;
-	mpu9250_handle->data.vertical_v = 0.0f;
+	mpu9250_handle->data.speed_if[X_POS] = 0.0f;
+	mpu9250_handle->data.speed_if[Y_POS] = 0.0f;
+	mpu9250_handle->data.speed_if[Z_POS] = 0.0f;
 	mpu9250_handle->data.vertical_acc_offset = 0.0f;
 
     // set Configuration Register
@@ -266,21 +268,25 @@ esp_err_t mpu9250_calc_accel_without_g(mpu9250_handle_t mpu9250_handle) {
 }
 
 uint16_t speed_counter = 0;
-float vv_start = 0;
+float vv_start[3] = {0.0f,0.0f,0.0f};
 // FIXME: compensare con altro sensore (barometer and/or time of fly and/or gps) ..
-esp_err_t mpu9250_calc_vertical_v(mpu9250_handle_t mpu9250_handle) {
-	int32_t vi = (mpu9250_handle->data.accel_without_g_if[Z_POS]*1000 / 500);
-	float v = (float)vi/1000.0f;
-	mpu9250_handle->data.vertical_v += v;
+esp_err_t mpu9250_calc_speed_if(mpu9250_handle_t mpu9250_handle) {
 	speed_counter++;
 	speed_counter %= 100;
-	if(speed_counter == 0) {
-//		printf("V=[%5.5f]\n", v);
-		float vv_diff = mpu9250_handle->data.vertical_v - vv_start;
-		if(vv_diff > - 0.05 && vv_diff < 0.05 ) {
-			mpu9250_handle->data.vertical_v = mpu9250_handle->data.vertical_v/2.0f;
+	int32_t vi = 0;
+	float v = 0.0f;
+	float vv_diff = 0.0f;
+	for(uint8_t i = 0; i < 3; i++) {
+		vi = (mpu9250_handle->data.accel_without_g_if[i]*1000 / 500);
+		v = (float)vi/1000.0f;
+		mpu9250_handle->data.speed_if[i] += v;
+		if(speed_counter == 0) {
+			vv_diff = mpu9250_handle->data.speed_if[i] - vv_start[i];
+			if(vv_diff > - 0.05 && vv_diff < 0.05 ) {
+				mpu9250_handle->data.speed_if[i] = mpu9250_handle->data.speed_if[i]/2.0f;
+			}
+			vv_start[i] = mpu9250_handle->data.speed_if[i];
 		}
-		vv_start = mpu9250_handle->data.vertical_v;
 	}
 	return ESP_OK;
 }
@@ -332,7 +338,7 @@ esp_err_t mpu9250_update_state(mpu9250_handle_t mpu9250_handle) {
 
 	ESP_ERROR_CHECK(mpu9250_calc_gravity(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_calc_accel_without_g(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_calc_vertical_v(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_calc_speed_if(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_calc_mag_frames(mpu9250_handle));
 	return ESP_OK;
 }

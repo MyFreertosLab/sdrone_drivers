@@ -4,7 +4,6 @@
 #include <esp_system.h>
 #include <motors.h>
 
-static mcpwm_dev_t *MCPWM[2] = {&MCPWM0, &MCPWM1};
 static mcpwm_generator_t motors_pwm_generator[MOTORS_MAX_NUM] = {
 		MCPWM_GEN_A, MCPWM_GEN_B, MCPWM_GEN_A, MCPWM_GEN_B, MCPWM_GEN_A, MCPWM_GEN_B,
 		MCPWM_GEN_A, MCPWM_GEN_B, MCPWM_GEN_A, MCPWM_GEN_B, MCPWM_GEN_A, MCPWM_GEN_B
@@ -108,6 +107,13 @@ esp_err_t motors_init_mcpwm_pins(motors_handle_t motors_handle, mcpwm_unit_t uni
 }
 esp_err_t motors_init_mcpwm(motors_handle_t motors_handle, mcpwm_unit_t unit) {
 	printf("motors: motors_init_mcpwm [%d]\n", unit);
+    // first configure sync source
+    mcpwm_sync_config_t sync_conf = {
+        .sync_sig = MCPWM_SELECT_GPIO_SYNC0,
+        .timer_val = 0,
+        .count_direction = MCPWM_TIMER_DIRECTION_UP,
+    };
+
 	ESP_ERROR_CHECK(motors_init_mcpwm_pins(motors_handle, unit));
     uint8_t si = motors_get_mcpwm_motors_range(unit);
 
@@ -116,9 +122,9 @@ esp_err_t motors_init_mcpwm(motors_handle_t motors_handle, mcpwm_unit_t unit) {
     ESP_ERROR_CHECK(motors_init_pwm_timer(motors_handle, unit, MCPWM_TIMER_2));
 
     // Sync timer 1 and timer 2 with timer 0
-    mcpwm_sync_enable(MCPWM_UNIT_0, MCPWM_TIMER_1, 1, 0);
-    mcpwm_sync_enable(MCPWM_UNIT_0, MCPWM_TIMER_2, 1, 0);
-    MCPWM[MCPWM_UNIT_0]->timer[MCPWM_TIMER_0].sync.out_sel = 1;
+
+    mcpwm_sync_configure(MCPWM_UNIT_0, MCPWM_TIMER_1, &sync_conf);
+    mcpwm_sync_configure(MCPWM_UNIT_0, MCPWM_TIMER_2, &sync_conf);
 
     for(uint8_t i = 0; i < 6; i++) {
       if(motors_handle->motor[i+si].enabled) {
