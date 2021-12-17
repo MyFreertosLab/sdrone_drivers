@@ -147,8 +147,10 @@ static esp_err_t mpu9250_acc_calc_rpy(mpu9250_handle_t mpu9250_handle) {
 	// range of values: [-pi/2,+pi/2] rad
 	// Accel X angle is Pitch
 	// Accel Y angle is Roll
-	mpu9250_handle->data.accel.rpy.xyz.x = PI_HALF - acos((double)mpu9250_handle->data.accel.cal.kalman[Y_POS].X/modq);
-	mpu9250_handle->data.accel.rpy.xyz.y = - PI_HALF + acos((double)mpu9250_handle->data.accel.cal.kalman[X_POS].X/modq);
+	mpu9250_handle->data.accel.rpy.xyz.x = asin((double)mpu9250_handle->data.accel.cal.kalman[Y_POS].X/modq);
+	mpu9250_handle->data.accel.rpy.xyz.y = asin(-(double)mpu9250_handle->data.accel.cal.kalman[X_POS].X/modq);
+
+	// FIXME: togliere di mezzo
 	mpu9250_handle->data.accel.rpy.xyz.z = acos((double)mpu9250_handle->data.accel.cal.kalman[Z_POS].X/modq);
 	return ESP_OK;
 }
@@ -176,9 +178,13 @@ static esp_err_t mpu9250_acc_filter_data(mpu9250_handle_t mpu9250_handle) {
 	}
 	return ESP_OK;
 }
-static esp_err_t mpu9250_acc_calc_mss(mpu9250_handle_t mpu9250_handle) {
+
+static esp_err_t mpu9250_acc_calc_mss_if(mpu9250_handle_t mpu9250_handle) {
+	float mss_bf[3] = {0.0f,0.0f,0.0f};
+
 	for(uint8_t i = 0; i < 3; i++) {
-		mpu9250_handle->data.accel.mss.array[i]  = (float)mpu9250_handle->data.accel.cal.kalman[i].X/(float)mpu9250_handle->data.accel.lsb*mpu9250_handle->data.accel.acc_g_factor*SDRONE_GRAVITY_ACCELERATION;
+		mss_bf[i] = (float)mpu9250_handle->data.accel.cal.kalman[i].X/(float)mpu9250_handle->data.accel.lsb*mpu9250_handle->data.accel.acc_g_factor*SDRONE_GRAVITY_ACCELERATION;
+		ESP_ERROR_CHECK(mpu9250_to_inertial_frame(&mpu9250_handle->data.cossin_actual, mss_bf, mpu9250_handle->data.accel.mss_if.array));
 	}
 	return ESP_OK;
 }
@@ -229,6 +235,6 @@ esp_err_t mpu9250_acc_set_offset(mpu9250_handle_t mpu9250_handle, int16_t xoff, 
 esp_err_t mpu9250_acc_update_state(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_acc_filter_data(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_acc_calc_rpy(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_acc_calc_mss(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_acc_calc_mss_if(mpu9250_handle));
 	return ESP_OK;
 }

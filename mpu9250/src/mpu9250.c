@@ -241,6 +241,7 @@ esp_err_t mpu9250_to_inertial_frame(mpu9250_cossin_t* cossin, float* source, flo
 	destination[Z_POS] = (-cossin->sp)*source[X_POS] + (cossin->cp*cossin->sr)*source[Y_POS]                                                            + (cossin->cp*cossin->cr)*source[Z_POS];
 	return ESP_OK;
 }
+
 // source vector from body frame to inertial frame without yaw
 esp_err_t mpu9250_to_inertial_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination) {
 	destination[X_POS] = cossin->cp*source[X_POS] + cossin->sp*cossin->sr*source[Y_POS] + cossin->sp*cossin->cr*source[Z_POS];
@@ -250,7 +251,7 @@ esp_err_t mpu9250_to_inertial_frame_without_yaw(mpu9250_cossin_t* cossin, float*
 }
 
 // gravity in body frame (negative)
-esp_err_t mpu9250_calc_gravity(mpu9250_handle_t mpu9250_handle) {
+esp_err_t mpu9250_calc_gravity_bf(mpu9250_handle_t mpu9250_handle) {
 	mpu9250_handle->data.gravity_bf[X_POS] = mpu9250_handle->data.cossin_actual.sp * SDRONE_GRAVITY_ACCELERATION;
 	mpu9250_handle->data.gravity_bf[Y_POS] = -mpu9250_handle->data.cossin_actual.cp * mpu9250_handle->data.cossin_actual.sr * SDRONE_GRAVITY_ACCELERATION;
 	mpu9250_handle->data.gravity_bf[Z_POS] = -mpu9250_handle->data.cossin_actual.cp * mpu9250_handle->data.cossin_actual.cr * SDRONE_GRAVITY_ACCELERATION;
@@ -258,11 +259,10 @@ esp_err_t mpu9250_calc_gravity(mpu9250_handle_t mpu9250_handle) {
 }
 
 esp_err_t mpu9250_calc_accel_without_g(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.accel_without_g[X_POS] = mpu9250_handle->data.accel.mss.array[X_POS] + mpu9250_handle->data.gravity_bf[X_POS];
-	mpu9250_handle->data.accel_without_g[Y_POS] = mpu9250_handle->data.accel.mss.array[Y_POS] + mpu9250_handle->data.gravity_bf[Y_POS];
-	mpu9250_handle->data.accel_without_g[Z_POS] = mpu9250_handle->data.accel.mss.array[Z_POS] + mpu9250_handle->data.gravity_bf[Z_POS];
-	ESP_ERROR_CHECK(mpu9250_to_inertial_frame_without_yaw(&mpu9250_handle->data.cossin_actual, mpu9250_handle->data.accel_without_g, mpu9250_handle->data.accel_without_g_if));
-	mpu9250_handle->data.accel_without_g_if[Z_POS] = mpu9250_handle->data.accel_without_g_if[Z_POS] - mpu9250_handle->data.vertical_acc_offset;
+	mpu9250_handle->data.accel_without_g_if[X_POS] = mpu9250_handle->data.accel.mss_if.array[X_POS];
+	mpu9250_handle->data.accel_without_g_if[Y_POS] = mpu9250_handle->data.accel.mss_if.array[Y_POS];
+	mpu9250_handle->data.accel_without_g_if[Z_POS] = mpu9250_handle->data.accel.mss_if.array[Z_POS] - SDRONE_GRAVITY_ACCELERATION;
+	ESP_ERROR_CHECK(mpu9250_to_body_frame(&mpu9250_handle->data.cossin_actual, mpu9250_handle->data.accel_without_g_if, mpu9250_handle->data.accel_without_g_bf));
 	return ESP_OK;
 }
 
@@ -335,7 +335,7 @@ esp_err_t mpu9250_update_state(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_mag_update_state(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_calc_rpy(mpu9250_handle));
 
-	ESP_ERROR_CHECK(mpu9250_calc_gravity(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_calc_gravity_bf(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_calc_accel_without_g(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_calc_speed_if(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_calc_mag_frames(mpu9250_handle));

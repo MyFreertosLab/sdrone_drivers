@@ -533,7 +533,7 @@ typedef struct mpu9250_accel_s {
 	mpu9250_cb_t cb[3]; // circular buffer
 	mpu9250_rpy_t rpy;
     float acc_g_factor;
-    mpu9250_float_3d_t mss;// accel in m/s^2
+    mpu9250_float_3d_t mss_if;// accel in m/s^2 in inertial frame
 
 } mpu9250_accel_t;
 
@@ -591,7 +591,7 @@ typedef struct {
 	float gravity_bf[3];
 	uint8_t acc_g_factor_initialized;
 	float speed_if[3]; // linear speed in inertial frame coordinates
-	float accel_without_g[3]; // linear accel in body frame coordinates
+	float accel_without_g_bf[3]; // linear accel in body frame coordinates
 	float accel_without_g_if[3]; // estimation in inertial frame without yaw
 	float vertical_acc_offset; // vertical acc offset estimation
 	mpu9250_cossin_t cossin_actual;
