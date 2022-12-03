@@ -91,6 +91,10 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
     ESP_ERROR_CHECK(mpu9250_read8(mpu9250_handle, MPU9250_I2C_MST_STATUS, &i2c_mst_status));
     printf("I2C STATUS: [%d]\n", i2c_mst_status);
 
+
+	/******************************************************************************************
+	 * MAGNETOMETER
+	 ******************************************************************************************/
 	ESP_ERROR_CHECK(mpu9250_mag_init(mpu9250_handle));
 
 	/******************************************************************************************
@@ -210,140 +214,60 @@ esp_err_t mpu9250_load_raw_data(mpu9250_handle_t mpu9250_handle) {
 	ret = mpu9250_read_buff(mpu9250_handle, MPU9250_EXT_SENS_DATA_00, buff, 16*8);
 
 	mpu9250_handle->data.mag.drdy = (buff[0] & 0x01) & ~((buff[7] & 0x08) >> 3); // drdy true e hofl false
-	mpu9250_handle->data.raw_data.data_s_vector.mag[X_POS] = ((buff[2] << 8) | buff[1]);
-	mpu9250_handle->data.raw_data.data_s_vector.mag[Y_POS] = ((buff[4] << 8) | buff[3]);
-	mpu9250_handle->data.raw_data.data_s_vector.mag[Z_POS] = ((buff[6] << 8) | buff[5]);
-
-
+	if(mpu9250_handle->data.mag.drdy) {
+		mpu9250_handle->data.raw_data.data_s_vector.mag[X_POS] = ((buff[2] << 8) | buff[1]);
+		mpu9250_handle->data.raw_data.data_s_vector.mag[Y_POS] = ((buff[4] << 8) | buff[3]);
+		mpu9250_handle->data.raw_data.data_s_vector.mag[Z_POS] = ((buff[6] << 8) | buff[5]);
+	}
 	return ret;
 }
-
-// source vector from intertial frame to body frame
-esp_err_t mpu9250_to_body_frame(mpu9250_cossin_t* cossin, float* source, float* destination) {
-	destination[X_POS] = (cossin->cy*cossin->cp)*source[X_POS] + (cossin->sy*cossin->cp)*source[Y_POS] + (-cossin->sp)*source[Z_POS];
-	destination[Y_POS] = (cossin->cy*cossin->sp*cossin->sr - cossin->sy*cossin->cr)*source[X_POS] + (cossin->sy*cossin->sp*cossin->sr + cossin->cy*cossin->cr)*source[Y_POS] + (cossin->cp*cossin->sr)*source[Z_POS];
-	destination[Z_POS] = (cossin->cy*cossin->sp*cossin->cr+cossin->sy*cossin->sr)*source[X_POS]   + (cossin->sy*cossin->sp*cossin->cr-cossin->cy*cossin->sr)*source[Y_POS]   + (cossin->cp*cossin->cr)*source[Z_POS];
-	return ESP_OK;
-}
-
-// source vector from intertial frame to body frame without yaw
-esp_err_t mpu9250_to_body_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination) {
-	destination[X_POS] = cossin->cp*source[X_POS] - cossin->sp*source[Z_POS];
-	destination[Y_POS] = cossin->sp*cossin->sr*source[X_POS] + cossin->cr*source[Y_POS] + cossin->cp*cossin->sr*source[Z_POS];
-	destination[Z_POS] = cossin->sp*cossin->cr*source[X_POS] - cossin->sr*source[Y_POS] + cossin->cp*cossin->cr*source[Z_POS];
-	return ESP_OK;
-}
-
-// source vector from body frame to intertial frame
-esp_err_t mpu9250_to_inertial_frame(mpu9250_cossin_t* cossin, float* source, float* destination) {
-	destination[X_POS] = (cossin->cy*cossin->cp)*source[X_POS] + (cossin->cy*cossin->sp*cossin->sr - cossin->sy*cossin->cr)*source[Y_POS] + (cossin->cy*cossin->sp*cossin->cr+cossin->sy*cossin->sr)*source[Z_POS];
-	destination[Y_POS] = (cossin->sy*cossin->cp)*source[X_POS] + (cossin->sy*cossin->sp*cossin->sr + cossin->cy*cossin->cr)*source[Y_POS] + (cossin->sy*cossin->sp*cossin->cr-cossin->cy*cossin->sr)*source[Z_POS];
-	destination[Z_POS] = (-cossin->sp)*source[X_POS] + (cossin->cp*cossin->sr)*source[Y_POS]                                                            + (cossin->cp*cossin->cr)*source[Z_POS];
-	return ESP_OK;
-}
-
-// source vector from body frame to inertial frame without yaw
-esp_err_t mpu9250_to_inertial_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination) {
-	destination[X_POS] = cossin->cp*source[X_POS] + cossin->sp*cossin->sr*source[Y_POS] + cossin->sp*cossin->cr*source[Z_POS];
-	destination[Y_POS] = cossin->cr*source[Y_POS] - cossin->sr*source[Z_POS];
-	destination[Z_POS] = -cossin->sp*source[X_POS] + cossin->cp*cossin->sr*source[Y_POS] + cossin->cp*cossin->cr*source[Z_POS];
-	return ESP_OK;
-}
-
-// gravity in body frame (negative)
-esp_err_t mpu9250_calc_gravity_bf(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.gravity_bf[X_POS] = mpu9250_handle->data.cossin_actual.sp * SDRONE_GRAVITY_ACCELERATION;
-	mpu9250_handle->data.gravity_bf[Y_POS] = -mpu9250_handle->data.cossin_actual.cp * mpu9250_handle->data.cossin_actual.sr * SDRONE_GRAVITY_ACCELERATION;
-	mpu9250_handle->data.gravity_bf[Z_POS] = -mpu9250_handle->data.cossin_actual.cp * mpu9250_handle->data.cossin_actual.cr * SDRONE_GRAVITY_ACCELERATION;
-	return ESP_OK;
-}
-
-esp_err_t mpu9250_calc_accel_without_g(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.accel_without_g_if[X_POS] = mpu9250_handle->data.accel.mss_if.array[X_POS];
-	mpu9250_handle->data.accel_without_g_if[Y_POS] = mpu9250_handle->data.accel.mss_if.array[Y_POS];
-	mpu9250_handle->data.accel_without_g_if[Z_POS] = mpu9250_handle->data.accel.mss_if.array[Z_POS] - SDRONE_GRAVITY_ACCELERATION;
-	ESP_ERROR_CHECK(mpu9250_to_body_frame(&mpu9250_handle->data.cossin_actual, mpu9250_handle->data.accel_without_g_if, mpu9250_handle->data.accel_without_g_bf));
-	return ESP_OK;
-}
-
-uint16_t speed_counter = 0;
-float vv_start[3] = {0.0f,0.0f,0.0f};
-// FIXME: compensare con altro sensore (barometer and/or time of fly and/or gps) ..
-esp_err_t mpu9250_calc_speed_if(mpu9250_handle_t mpu9250_handle) {
-	speed_counter++;
-	speed_counter %= 100;
-	int32_t vi = 0;
-	float v = 0.0f;
-	float vv_diff = 0.0f;
-	for(uint8_t i = 0; i < 3; i++) {
-		vi = (mpu9250_handle->data.accel_without_g_if[i]*1000 / 500);
-		v = (float)vi/1000.0f;
-		mpu9250_handle->data.speed_if[i] += v;
-		if(speed_counter == 0) {
-			vv_diff = mpu9250_handle->data.speed_if[i] - vv_start[i];
-			if(vv_diff > - 0.05 && vv_diff < 0.05 ) {
-				mpu9250_handle->data.speed_if[i] = mpu9250_handle->data.speed_if[i]/2.0f;
-			}
-			vv_start[i] = mpu9250_handle->data.speed_if[i];
-		}
+/*
+> applico il filtro seguente ai dati MAG,ACC calibrati
+              MX           MY           MZ           AX            AY           AZ
+[1,]  0.911713763 -0.079769789 -0.068227161 -0.067251825 -0.1400171500  0.002670831
+[2,] -0.165199803  0.798955727 -0.002526119 -0.153190305 -0.2341330258  0.130293550
+[3,] -0.026425360  0.052129760  0.882826268 -0.058521387 -0.0003191167 -0.101164079
+[4,]  0.087247394  0.115087412  0.074371592  1.019536355  0.1307812869 -0.007049727
+[5,]  0.002295771  0.043996185  0.007805331  0.008769458  1.1049553495 -0.012914788
+[6,] -0.004600663 -0.009441748  0.008178032 -0.003655173 -0.0035476539  1.012830274
+ */
+esp_err_t mpu9250_filter_cal_data(mpu9250_handle_t mpu9250_handle) {
+	float mX = mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x;
+	float mY = mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y;
+	float mZ = mpu9250_handle->data.cal_data.data_s_xyz.mag_data_z;
+	float aX = mpu9250_handle->data.cal_data.data_s_xyz.accel_data_x;
+	float aY = mpu9250_handle->data.cal_data.data_s_xyz.accel_data_y;
+	float aZ = mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z;
+	if(mpu9250_handle->data.mag.drdy) {
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = mX*0.911713763 + mY*(-0.079769789) + mZ*(-0.068227161) + aX*(-0.067251825) + aY*(-0.1400171500) +aZ*(0.002670831);
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y = mX*(-0.165199803) + mY*(0.798955727) + mZ*(-0.002526119) + aX*(-0.153190305) + aY*(-0.2341330258) +aZ*(0.130293550);
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_z = mX*(-0.026425360) + mY*(0.052129760) + mZ*(0.882826268) + aX*(-0.058521387) + aY*(-0.0003191167) +aZ*(-0.101164079);
+		mpu9250_handle->data.cal_data.data_s_xyz.accel_data_x = mX*(0.087247394) + mY*(0.115087412) + mZ*(0.074371592) + aX*(1.019536355) + aY*(0.1307812869) +aZ*(-0.007049727);
+		mpu9250_handle->data.cal_data.data_s_xyz.accel_data_y = mX*(0.002295771) + mY*(0.043996185) + mZ*(0.007805331) + aX*(0.008769458) + aY*(1.1049553495) +aZ*(-0.012914788);
+		mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z = mX*(-0.004600663) + mY*(-0.009441748) + mZ*(0.008178032) + aX*(-0.003655173) + aY*(-0.0035476539) +aZ*(1.012830274);
 	}
 	return ESP_OK;
 }
-
-esp_err_t mpu9250_calc_cos_sin_rpy(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.cossin_actual.cy = cos(mpu9250_handle->data.gyro.rpy.xyz.z);
-	mpu9250_handle->data.cossin_actual.cp = cos(mpu9250_handle->data.gyro.rpy.xyz.y);
-	mpu9250_handle->data.cossin_actual.cr = cos(mpu9250_handle->data.gyro.rpy.xyz.x);
-	mpu9250_handle->data.cossin_actual.sy = sin(mpu9250_handle->data.gyro.rpy.xyz.z);
-	mpu9250_handle->data.cossin_actual.sp = sin(mpu9250_handle->data.gyro.rpy.xyz.y);
-	mpu9250_handle->data.cossin_actual.sr = sin(mpu9250_handle->data.gyro.rpy.xyz.x);
-
+int lcd_counter = 0;
+esp_err_t mpu9250_load_cal_data(mpu9250_handle_t mpu9250_handle) {
+#ifdef CONFIG_ESP_DATA_CAL
+	ESP_ERROR_CHECK(mpu9250_gyro_load_cal_data(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_acc_load_cal_data(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_mag_load_cal_data(mpu9250_handle));
+	mpu9250_handle->data.cal_data.data_s_xyz.temp_data = mpu9250_handle->data.raw_data.data_s_xyz.temp_data;
+	//ESP_ERROR_CHECK(mpu9250_filter_cal_data(mpu9250_handle));
+	lcd_counter++;
+	lcd_counter %= 100;
+	if(lcd_counter == 0) {
+		float roll = -atan2(mpu9250_handle->data.cal_data.data_s_xyz.accel_data_y, sqrt(mpu9250_handle->data.cal_data.data_s_xyz.accel_data_x*mpu9250_handle->data.cal_data.data_s_xyz.accel_data_x + mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z*mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z));
+		float pitch = -atan2(mpu9250_handle->data.cal_data.data_s_xyz.accel_data_x, sqrt(mpu9250_handle->data.cal_data.data_s_xyz.accel_data_y*mpu9250_handle->data.cal_data.data_s_xyz.accel_data_y + mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z*mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z));
+		printf("RP[%3.3f, %3.3f]\n", roll/PI*180, pitch/PI*180);
+	}
+#endif
 	return ESP_OK;
 }
-esp_err_t mpu9250_calc_rpy(mpu9250_handle_t mpu9250_handle) {
-
-	// roll pitch fusion (accel + gyro)
-	mpu9250_handle->data.gyro.rpy.xyz.x += 0.0025*(mpu9250_handle->data.accel.rpy.xyz.x - mpu9250_handle->data.gyro.rpy.xyz.x);
-	mpu9250_handle->data.gyro.rpy.xyz.y += 0.0025*(mpu9250_handle->data.accel.rpy.xyz.y - mpu9250_handle->data.gyro.rpy.xyz.y);
-
-
-	ESP_ERROR_CHECK(mpu9250_calc_cos_sin_rpy(mpu9250_handle));
-
-	float mx = mpu9250_handle->data.mag.body_frame_data.array[X_POS];
-	float my = mpu9250_handle->data.mag.body_frame_data.array[Y_POS];
-	float mz = mpu9250_handle->data.mag.body_frame_data.array[Z_POS];
-
-	float mx_ = mpu9250_handle->data.cossin_actual.cp*mx  + mpu9250_handle->data.cossin_actual.sp*mpu9250_handle->data.cossin_actual.sr*my  + mpu9250_handle->data.cossin_actual.sp*mpu9250_handle->data.cossin_actual.cr*mz;
-	float my_ = 0                      + mpu9250_handle->data.cossin_actual.cr*my                     - mpu9250_handle->data.cossin_actual.sr*mz;
-
-	mpu9250_handle->data.mag.rpy.xyz.x = mpu9250_handle->data.gyro.rpy.xyz.x;
-	mpu9250_handle->data.mag.rpy.xyz.y = mpu9250_handle->data.gyro.rpy.xyz.y;
-	mpu9250_handle->data.mag.rpy.xyz.z = atan2(my_, mx_);
-
-	return ESP_OK;
-}
-
-esp_err_t mpu9250_calc_mag_frames(mpu9250_handle_t mpu9250_handle) {
-	ESP_ERROR_CHECK(mpu9250_mag_scale_data_in_body_frame(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_to_inertial_frame(&mpu9250_handle->data.cossin_actual, mpu9250_handle->data.mag.body_frame_data.array, mpu9250_handle->data.mag.inertial_frame_data.array));
-	return ESP_OK;
-}
-
-esp_err_t mpu9250_update_state(mpu9250_handle_t mpu9250_handle) {
-	ESP_ERROR_CHECK(mpu9250_acc_update_state(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_gyro_update_state(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_mag_update_state(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_calc_rpy(mpu9250_handle));
-
-	ESP_ERROR_CHECK(mpu9250_calc_gravity_bf(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_calc_accel_without_g(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_calc_speed_if(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_calc_mag_frames(mpu9250_handle));
-	return ESP_OK;
-}
-
 esp_err_t mpu9250_load_data(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_load_raw_data(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_update_state(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_load_cal_data(mpu9250_handle));
 	return ESP_OK;
 }

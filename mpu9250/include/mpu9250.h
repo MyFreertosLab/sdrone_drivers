@@ -475,13 +475,8 @@ typedef struct {
 typedef struct {
     mpu9250_uint8_3d_t asa;
     mpu9250_scale_factors_t scale_factors; // factory factors
-    mpu9250_offset_t offset[2];
-    mpu9250_means_t means[4];
-    mpu9250_var_t var[4];
-    mpu9250_sqm_t sqm[4];
-    mpu9250_kalman_t kalman[3];
-	mpu9250_scale_factors_t scale_factors2[2]; // correction of factory factors
-    mpu9250_scaled_offset_t scaled_offset[2];
+	mpu9250_scale_factors_t scale_factors2[3]; // correction of factory factors
+    mpu9250_offset_t offsets;
 } mpu9250_mag_cal_data_t;
 
 /* Circular Buffer */
@@ -523,6 +518,28 @@ typedef union {
 } mpu9250_raw_data_t;
 typedef mpu9250_raw_data_t* mpu9250_raw_data_buff_t;
 
+typedef union {
+   struct {
+     float accel[3];
+     int16_t temp;
+     int16_t gyro[3];
+     float mag[3];
+   } data_s_vector;
+   struct {
+     float accel_data_x;
+     float accel_data_y;
+     float accel_data_z;
+     int16_t temp_data;
+     int16_t gyro_data_x;
+     int16_t gyro_data_y;
+     int16_t gyro_data_z;
+     float mag_data_x;
+     float mag_data_y;
+     float mag_data_z;
+   } data_s_xyz;
+} mpu9250_calibrated_data_t;
+typedef mpu9250_calibrated_data_t* mpu9250_calibrated_data_buff_t;
+
 /*********************************
 ********* ACCELEROMETER **********
 *********************************/
@@ -533,7 +550,8 @@ typedef struct mpu9250_accel_s {
 	mpu9250_cb_t cb[3]; // circular buffer
 	mpu9250_rpy_t rpy;
     float acc_g_factor;
-    mpu9250_float_3d_t mss_if;// accel in m/s^2 in inertial frame
+    float acc_factors[3];
+    mpu9250_float_3d_t acc_g_bd; // acceleration expressed in g at body frame
 
 } mpu9250_accel_t;
 
@@ -559,10 +577,6 @@ typedef struct mpu9250_mag_s {
 	mpu9250_mag_cal_data_t cal; // mag calibration data
 	mag_precision_e precision;
     float precision_factor;
-	mpu9250_rpy_t rpy;
-    mpu9250_float_3d_t inertial_frame_data; // toIntertialFrame(body_frame_data)
-    mpu9250_float_3d_t body_frame_data; // toBodyFrame(inertial_data)
-    float module;
     uint8_t drdy;
 } mpu9250_mag_t;
 
@@ -585,6 +599,7 @@ typedef struct {
 typedef struct {
 	uint32_t timestamp;
     mpu9250_raw_data_t raw_data;
+    mpu9250_calibrated_data_t cal_data;
     mpu9250_accel_t accel;
     mpu9250_gyro_t gyro;
     mpu9250_mag_t mag;
@@ -632,10 +647,4 @@ esp_err_t mpu9250_load_int_status(mpu9250_handle_t mpu9250_handle);
 esp_err_t mpu9250_load_raw_data(mpu9250_handle_t mpu9250_handle);
 esp_err_t mpu9250_load_data(mpu9250_handle_t mpu9250_handle);
 
-// utilities
-// FIXME: create a library for math calc
-esp_err_t mpu9250_to_body_frame(mpu9250_cossin_t* cossin, float* source, float* destination);
-esp_err_t mpu9250_to_body_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination);
-esp_err_t mpu9250_to_inertial_frame(mpu9250_cossin_t* cossin, float* source, float* destination);
-esp_err_t mpu9250_to_inertial_frame_without_yaw(mpu9250_cossin_t* cossin, float* source, float* destination);
 #endif // _MPU9250_H_

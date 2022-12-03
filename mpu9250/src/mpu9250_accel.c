@@ -52,25 +52,10 @@ static esp_err_t mpu9250_acc_save_fsr(mpu9250_handle_t mpu9250_handle) {
     return (mpu9250_handle->data.accel.fsr == acc_conf_req ? ESP_OK : ESP_FAIL);
 }
 
-static esp_err_t mpu9250_acc_init_kalman_filter(mpu9250_handle_t mpu9250_handle) {
-	for(uint8_t i = 0; i < 3; i++) {
-		mpu9250_handle->data.accel.cal.kalman[i].X = mpu9250_handle->data.accel.lsb;
-		mpu9250_handle->data.accel.cal.kalman[i].sample=0;
-		mpu9250_handle->data.accel.cal.kalman[i].P=300.0f;
-		mpu9250_handle->data.accel.cal.kalman[i].Q=1.5;
-		mpu9250_handle->data.accel.cal.kalman[i].K=0.0f;
-		mpu9250_handle->data.accel.cal.kalman[i].R=mpu9250_handle->data.accel.cal.var[mpu9250_handle->data.accel.fsr].array[i]; //8141.7623; // rilevato con eliche attive
-		mpu9250_handle->data.accel.cal.kalman[i].initialized = 0;
-	}
-
-	return ESP_OK;
-}
-
 static esp_err_t mpu9250_acc_calc_lsb(mpu9250_handle_t mpu9250_handle) {
 	mpu9250_handle->data.accel.lsb = (32768 >> (mpu9250_handle->data.accel.fsr + 1));
 	return ESP_OK;
 }
-
 
 static esp_err_t mpu9250_acc_save_offset(mpu9250_handle_t mpu9250_handle) {
 	uint8_t buff[8];
@@ -87,105 +72,55 @@ static esp_err_t mpu9250_acc_save_offset(mpu9250_handle_t mpu9250_handle) {
 	return ret;
 }
 
-static esp_err_t mpu9250_acc_load_calibration_data(mpu9250_handle_t mpu9250_handle) {
-    nvs_handle_t my_handle;
-    uint8_t flashed = 0;
-    ESP_ERROR_CHECK(nvs_open("ACC_CAL", NVS_READWRITE, &my_handle));
-    ESP_ERROR_CHECK(nvs_get_u8(my_handle, "FLASHED", &flashed));
-
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "X_OFF", &mpu9250_handle->data.accel.cal.offset.array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Y_OFF", &mpu9250_handle->data.accel.cal.offset.array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Z_OFF", &mpu9250_handle->data.accel.cal.offset.array[Z_POS]));
-
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "X_VAR_2G", &mpu9250_handle->data.accel.cal.var[INV_FSR_2G].array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "Y_VAR_2G", &mpu9250_handle->data.accel.cal.var[INV_FSR_2G].array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "Z_VAR_2G", &mpu9250_handle->data.accel.cal.var[INV_FSR_2G].array[Z_POS]));
-
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "X_VAR_4G", &mpu9250_handle->data.accel.cal.var[INV_FSR_4G].array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "Y_VAR_4G", &mpu9250_handle->data.accel.cal.var[INV_FSR_4G].array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "Z_VAR_4G", &mpu9250_handle->data.accel.cal.var[INV_FSR_4G].array[Z_POS]));
-
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "X_VAR_8G", &mpu9250_handle->data.accel.cal.var[INV_FSR_8G].array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "Y_VAR_8G", &mpu9250_handle->data.accel.cal.var[INV_FSR_8G].array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "Z_VAR_8G", &mpu9250_handle->data.accel.cal.var[INV_FSR_8G].array[Z_POS]));
-
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "X_VAR_16G", &mpu9250_handle->data.accel.cal.var[INV_FSR_16G].array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "Y_VAR_16G", &mpu9250_handle->data.accel.cal.var[INV_FSR_16G].array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_u16(my_handle, "Z_VAR_16G", &mpu9250_handle->data.accel.cal.var[INV_FSR_16G].array[Z_POS]));
-
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "X_SQM_2G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_2G].array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Y_SQM_2G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_2G].array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Z_SQM_2G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_2G].array[Z_POS]));
-
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "X_SQM_4G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_4G].array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Y_SQM_4G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_4G].array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Z_SQM_4G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_4G].array[Z_POS]));
-
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "X_SQM_8G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_8G].array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Y_SQM_8G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_8G].array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Z_SQM_8G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_8G].array[Z_POS]));
-
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "X_SQM_16G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_16G].array[X_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Y_SQM_16G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_16G].array[Y_POS]));
-    ESP_ERROR_CHECK(nvs_get_i16(my_handle, "Z_SQM_16G", &mpu9250_handle->data.accel.cal.sqm[INV_FSR_16G].array[Z_POS]));
-
-    printf("Accel: loaded calibration data from NVS ... \n");
-    printf("Accel offsets [%d][%d][%d]:\n", mpu9250_handle->data.accel.cal.offset.array[X_POS], mpu9250_handle->data.accel.cal.offset.array[Y_POS],mpu9250_handle->data.accel.cal.offset.array[Z_POS]);
-    printf("Accel var 8G [%d][%d][%d]:\n", mpu9250_handle->data.accel.cal.var[INV_FSR_8G].array[X_POS], mpu9250_handle->data.accel.cal.var[INV_FSR_8G].array[Y_POS],mpu9250_handle->data.accel.cal.var[INV_FSR_8G].array[Z_POS]);
-    printf("Accel sqm 8G [%d][%d][%d]:\n", mpu9250_handle->data.accel.cal.sqm[INV_FSR_8G].array[X_POS], mpu9250_handle->data.accel.cal.sqm[INV_FSR_8G].array[Y_POS],mpu9250_handle->data.accel.cal.sqm[INV_FSR_8G].array[Z_POS]);
-
-    // Close
-    nvs_close(my_handle);
-	return ESP_OK;
+static esp_err_t mpu9250_acc_load_offset(mpu9250_handle_t mpu9250_handle) {
+	uint8_t buff[8];
+	esp_err_t ret = mpu9250_read_buff(mpu9250_handle, MPU9250_XA_OFFSET_H, buff, 8*8);
+	mpu9250_handle->data.accel.cal.offset.xyz.x = (buff[0] << 8) + buff[1];
+	mpu9250_handle->data.accel.cal.offset.xyz.y = (buff[3] << 8) + buff[4];
+	mpu9250_handle->data.accel.cal.offset.xyz.z = (buff[6] << 8) + buff[7];
+	return ret;
 }
+/*
+# Accelerometer:
+> prova_acc$offset
+         [,1]
+[1,] 118.5426
+[2,]  38.3002
+[3,] 178.5065
 
-static esp_err_t mpu9250_acc_calc_rpy(mpu9250_handle_t mpu9250_handle) {
-	double modq = sqrt((double)(mpu9250_handle->data.accel.cal.kalman[X_POS].X*mpu9250_handle->data.accel.cal.kalman[X_POS].X+
-			    mpu9250_handle->data.accel.cal.kalman[Y_POS].X*mpu9250_handle->data.accel.cal.kalman[Y_POS].X+
-				mpu9250_handle->data.accel.cal.kalman[Z_POS].X*mpu9250_handle->data.accel.cal.kalman[Z_POS].X));
+> prova_acc$invA
+              [,1]         [,2]          [,3]
+[1,]  2.435709e-04 2.391025e-06 -7.584315e-08
+[2,]  2.391025e-06 2.442745e-04  1.288202e-06
+[3,] -7.584315e-08 1.288202e-06  2.418650e-04
 
-	// range of values: [-pi/2,+pi/2] rad
-	// Accel X angle is Pitch
-	// Accel Y angle is Roll
-	mpu9250_handle->data.accel.rpy.xyz.x = asin((double)mpu9250_handle->data.accel.cal.kalman[Y_POS].X/modq);
-	mpu9250_handle->data.accel.rpy.xyz.y = asin(-(double)mpu9250_handle->data.accel.cal.kalman[X_POS].X/modq);
+> prova_acc$scale_factors
+          [,1]      [,2]      [,3]
+[1,] 0.9986014 0.0000000 0.0000000
+[2,] 0.0000000 0.9986014 0.0000000
+[3,] 0.0000000 0.0000000 0.9986014
 
-	// FIXME: togliere di mezzo
-	mpu9250_handle->data.accel.rpy.xyz.z = acos((double)mpu9250_handle->data.accel.cal.kalman[Z_POS].X/modq);
-	return ESP_OK;
-}
-
-static esp_err_t mpu9250_acc_filter_data(mpu9250_handle_t mpu9250_handle) {
-	for(uint8_t i = 0; i < 3; i++) {
-		if(mpu9250_handle->data.accel.cal.kalman[i].P > 0.01) {
-			/*
-			 *     X(k)=X(k-1), X(0)=sample
-			 *     P(k)=P(k-1)+Q, P(0)=300.0f
-			 *     K(k)=P(k)/(P(k)+R)
-			 *     X(k)=X(k)+K(k)*(Sample(k)-X(k))
-			 *     P(k)=(1-K(k))*P(k)
-			 */
-			mpu9250_cb_means(&mpu9250_handle->data.accel.cb[i], &mpu9250_handle->data.accel.cal.kalman[i].sample);
-			if(mpu9250_handle->data.accel.cal.kalman[i].initialized == 0) {
-				mpu9250_handle->data.accel.cal.kalman[i].X = mpu9250_handle->data.accel.cal.kalman[i].sample;
-				mpu9250_handle->data.accel.cal.kalman[i].initialized = 1;
-			}
-			mpu9250_handle->data.accel.cal.kalman[i].P = mpu9250_handle->data.accel.cal.kalman[i].P+mpu9250_handle->data.accel.cal.kalman[i].Q;
-			mpu9250_handle->data.accel.cal.kalman[i].K = mpu9250_handle->data.accel.cal.kalman[i].P/(mpu9250_handle->data.accel.cal.kalman[i].P+mpu9250_handle->data.accel.cal.kalman[i].R);
-			mpu9250_handle->data.accel.cal.kalman[i].X = mpu9250_handle->data.accel.cal.kalman[i].X + mpu9250_handle->data.accel.cal.kalman[i].K*(mpu9250_handle->data.accel.cal.kalman[i].sample - mpu9250_handle->data.accel.cal.kalman[i].X);
-			mpu9250_handle->data.accel.cal.kalman[i].P = (1-mpu9250_handle->data.accel.cal.kalman[i].K)*mpu9250_handle->data.accel.cal.kalman[i].P;
-		}
-	}
-	return ESP_OK;
-}
-
-static esp_err_t mpu9250_acc_calc_mss_if(mpu9250_handle_t mpu9250_handle) {
-	float mss_bf[3] = {0.0f,0.0f,0.0f};
-
-	for(uint8_t i = 0; i < 3; i++) {
-		mss_bf[i] = (float)mpu9250_handle->data.accel.cal.kalman[i].X/(float)mpu9250_handle->data.accel.lsb*mpu9250_handle->data.accel.acc_g_factor*SDRONE_GRAVITY_ACCELERATION;
-		ESP_ERROR_CHECK(mpu9250_to_inertial_frame(&mpu9250_handle->data.cossin_actual, mss_bf, mpu9250_handle->data.accel.mss_if.array));
-	}
+> prova_acc$scale_factors %*% prova_acc$invA
+              [,1]         [,2]          [,3]
+[1,]  2.432302e-04 2.387681e-06 -7.573707e-08
+[2,]  2.387681e-06 2.439328e-04  1.286401e-06
+[3,] -7.573707e-08 1.286401e-06  2.415267e-04
+ */
+static esp_err_t mpu9250_acc_set_calibration_data(mpu9250_handle_t mpu9250_handle) {
+	ESP_ERROR_CHECK(mpu9250_acc_load_offset(mpu9250_handle));
+#ifdef CONFIG_ESP_DATA_CAL
+	mpu9250_handle->data.accel.cal.offset.xyz.x += 119;
+	mpu9250_handle->data.accel.cal.offset.xyz.y += 38;
+	mpu9250_handle->data.accel.cal.offset.xyz.z += 179;
+	ESP_ERROR_CHECK(mpu9250_acc_save_offset(mpu9250_handle));
+	mpu9250_handle->data.accel.acc_factors[0] = 2.432302e-04f;
+	mpu9250_handle->data.accel.acc_factors[1] = 2.439328e-04f;
+	mpu9250_handle->data.accel.acc_factors[2] = 2.415267e-04f;
+#else
+	mpu9250_handle->data.accel.acc_factors[0] = 1.0f;
+	mpu9250_handle->data.accel.acc_factors[1] = 1.0f;
+	mpu9250_handle->data.accel.acc_factors[2] = 1.0f;
+#endif
 	return ESP_OK;
 }
 
@@ -193,13 +128,11 @@ static esp_err_t mpu9250_acc_calc_mss_if(mpu9250_handle_t mpu9250_handle) {
  ****************** A P I  I M P L E M E N T A T I O N ******************
  ************************************************************************/
 esp_err_t mpu9250_acc_init(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_acc_load_calibration_data(mpu9250_handle); // set offset, var, sqm, P, K
-	mpu9250_acc_save_offset(mpu9250_handle);
-	mpu9250_acc_init_kalman_filter(mpu9250_handle);
 	mpu9250_handle->data.accel.rpy.xyz.x = 0;
 	mpu9250_handle->data.accel.rpy.xyz.y = 0;
 	mpu9250_handle->data.accel.rpy.xyz.z = 0;
 	mpu9250_handle->data.accel.acc_g_factor = 1.0f;
+	ESP_ERROR_CHECK(mpu9250_acc_set_calibration_data(mpu9250_handle));
 	return ESP_OK;
 }
 
@@ -217,24 +150,11 @@ esp_err_t mpu9250_acc_set_fsr(mpu9250_handle_t mpu9250_handle, uint8_t fsr) {
 	return ESP_OK;
 }
 
-esp_err_t mpu9250_acc_load_offset(mpu9250_handle_t mpu9250_handle) {
-	uint8_t buff[8];
-	esp_err_t ret = mpu9250_read_buff(mpu9250_handle, MPU9250_XA_OFFSET_H, buff, 8*8);
-	mpu9250_handle->data.accel.cal.offset.xyz.x = (buff[0] << 8) + buff[1];
-	mpu9250_handle->data.accel.cal.offset.xyz.y = (buff[3] << 8) + buff[4];
-	mpu9250_handle->data.accel.cal.offset.xyz.z = (buff[6] << 8) + buff[7];
-	return ret;
-}
-esp_err_t mpu9250_acc_set_offset(mpu9250_handle_t mpu9250_handle, int16_t xoff, int16_t yoff, int16_t zoff) {
-	mpu9250_handle->data.accel.cal.offset.xyz.x = xoff;
-	mpu9250_handle->data.accel.cal.offset.xyz.y = yoff;
-	mpu9250_handle->data.accel.cal.offset.xyz.z = zoff;
-	return mpu9250_acc_save_offset(mpu9250_handle);
-}
-
-esp_err_t mpu9250_acc_update_state(mpu9250_handle_t mpu9250_handle) {
-	ESP_ERROR_CHECK(mpu9250_acc_filter_data(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_acc_calc_rpy(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_acc_calc_mss_if(mpu9250_handle));
+esp_err_t mpu9250_acc_load_cal_data(mpu9250_handle_t mpu9250_handle) {
+#ifdef CONFIG_ESP_DATA_CAL
+	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_x = mpu9250_handle->data.accel.acc_factors[0]*mpu9250_handle->data.raw_data.data_s_xyz.accel_data_x;
+	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_y = mpu9250_handle->data.accel.acc_factors[1]*mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y;
+	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z = mpu9250_handle->data.accel.acc_factors[2]*mpu9250_handle->data.raw_data.data_s_xyz.accel_data_z;
+#endif
 	return ESP_OK;
 }
