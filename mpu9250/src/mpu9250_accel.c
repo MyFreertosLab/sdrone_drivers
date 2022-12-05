@@ -109,13 +109,19 @@ static esp_err_t mpu9250_acc_load_offset(mpu9250_handle_t mpu9250_handle) {
 static esp_err_t mpu9250_acc_set_calibration_data(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_acc_load_offset(mpu9250_handle));
 #ifdef CONFIG_ESP_DATA_CAL
-	mpu9250_handle->data.accel.cal.offset.xyz.x += 119;
-	mpu9250_handle->data.accel.cal.offset.xyz.y += 38;
-	mpu9250_handle->data.accel.cal.offset.xyz.z += 179;
+	printf("Accel offsets pre: [%d, %d, %d]\n", mpu9250_handle->data.accel.cal.offset.xyz.x, mpu9250_handle->data.accel.cal.offset.xyz.y, mpu9250_handle->data.accel.cal.offset.xyz.z);
+//	mpu9250_handle->data.accel.cal.offset.xyz.x += 110;
+//	mpu9250_handle->data.accel.cal.offset.xyz.y += 20;
+//	mpu9250_handle->data.accel.cal.offset.xyz.z += 159;
+//	Accel offsets post: [-6458, 6230, 9227]
+	mpu9250_handle->data.accel.cal.offset.xyz.x = -6458;
+	mpu9250_handle->data.accel.cal.offset.xyz.y = 6230;
+	mpu9250_handle->data.accel.cal.offset.xyz.z = 9227;
+	printf("Accel offsets post: [%d, %d, %d]\n", mpu9250_handle->data.accel.cal.offset.xyz.x, mpu9250_handle->data.accel.cal.offset.xyz.y, mpu9250_handle->data.accel.cal.offset.xyz.z);
 	ESP_ERROR_CHECK(mpu9250_acc_save_offset(mpu9250_handle));
-	mpu9250_handle->data.accel.acc_factors[0] = 2.432302e-04f;
-	mpu9250_handle->data.accel.acc_factors[1] = 2.439328e-04f;
-	mpu9250_handle->data.accel.acc_factors[2] = 2.415267e-04f;
+	mpu9250_handle->data.accel.acc_factors[0] = 2.411398e-04f;
+	mpu9250_handle->data.accel.acc_factors[1] = 2.423258e-04f;
+	mpu9250_handle->data.accel.acc_factors[2] = 2.398786e-04f;
 #else
 	mpu9250_handle->data.accel.acc_factors[0] = 1.0f;
 	mpu9250_handle->data.accel.acc_factors[1] = 1.0f;

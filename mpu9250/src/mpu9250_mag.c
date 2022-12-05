@@ -136,18 +136,18 @@ prova$invA
  */
 static esp_err_t mpu9250_mag_set_calibration_data(mpu9250_handle_t mpu9250_handle) {
 #ifdef CONFIG_ESP_DATA_CAL
-	mpu9250_handle->data.mag.cal.offsets.array[X_POS] = 127;
-	mpu9250_handle->data.mag.cal.offsets.array[Y_POS] = 102;
-	mpu9250_handle->data.mag.cal.offsets.array[Z_POS] = 109;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[X_POS] =  0.0042607201f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Y_POS] = -0.000122442f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Z_POS] = -0.0003041074f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[X_POS] = -0.0001224420f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[Y_POS] =  0.004413834f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[Z_POS] = -0.0000908550f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[X_POS] = -0.0003041074f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[Y_POS] = -0.000090855f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[Z_POS] =  0.0049236988f;
+	mpu9250_handle->data.mag.cal.offsets.array[X_POS] = 125;
+	mpu9250_handle->data.mag.cal.offsets.array[Y_POS] = 105;
+	mpu9250_handle->data.mag.cal.offsets.array[Z_POS] = 104;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[X_POS] =  4.041199e-03f;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Y_POS] = -3.100427e-05f;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Z_POS] = -2.122374e-04f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[X_POS] = -3.100427e-05f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[Y_POS] =  4.245328e-03f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[Z_POS] =  4.912409e-05f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[X_POS] = -2.122374e-04f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[Y_POS] =  4.912409e-05f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[Z_POS] =  4.464546e-03f;
 #else
 	mpu9250_handle->data.mag.cal.offsets.array[X_POS] = 0;
 	mpu9250_handle->data.mag.cal.offsets.array[Y_POS] = 0;
