@@ -139,29 +139,29 @@ static esp_err_t mpu9250_mag_set_calibration_data(mpu9250_handle_t mpu9250_handl
 	mpu9250_handle->data.mag.cal.offsets.array[X_POS] = 125;
 	mpu9250_handle->data.mag.cal.offsets.array[Y_POS] = 105;
 	mpu9250_handle->data.mag.cal.offsets.array[Z_POS] = 104;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[X_POS] =  4.041199e-03f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Y_POS] = -3.100427e-05f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Z_POS] = -2.122374e-04f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[X_POS] = -3.100427e-05f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[Y_POS] =  4.245328e-03f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[Z_POS] =  4.912409e-05f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[X_POS] = -2.122374e-04f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[Y_POS] =  4.912409e-05f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[Z_POS] =  4.464546e-03f;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][X_POS] =  4.041199e-03f;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Y_POS] = -3.100427e-05f;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Z_POS] = -2.122374e-04f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][X_POS] = -3.100427e-05f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][Y_POS] =  4.245328e-03f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][Z_POS] =  4.912409e-05f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][X_POS] = -2.122374e-04f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][Y_POS] =  4.912409e-05f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][Z_POS] =  4.464546e-03f;
 #else
 	mpu9250_handle->data.mag.cal.offsets.array[X_POS] = 0;
 	mpu9250_handle->data.mag.cal.offsets.array[Y_POS] = 0;
 	mpu9250_handle->data.mag.cal.offsets.array[Z_POS] = 0;
 
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[X_POS] =  1.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Y_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Z_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[X_POS] =  1.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[Y_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].array[Z_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[X_POS] =  1.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[Y_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].array[Z_POS] =  0.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][X_POS] =  1.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Y_POS] =  0.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Z_POS] =  0.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][X_POS] =  1.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][Y_POS] =  0.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][Z_POS] =  0.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][X_POS] =  1.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][Y_POS] =  0.0f;
+	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][Z_POS] =  0.0f;
 #endif
 	printf("Mag: loaded default calibration data\n");
 	return ESP_OK;
@@ -240,7 +240,7 @@ esp_err_t mpu9250_mag_init(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_mag_set_calibration_data(mpu9250_handle));
 
 	printf("Mag offsets: [%d,%d,%d]\n", mpu9250_handle->data.mag.cal.offsets.array[X_POS], mpu9250_handle->data.mag.cal.offsets.array[Y_POS], mpu9250_handle->data.mag.cal.offsets.array[Z_POS]);
-	printf("Mag factors2: [%2.5f,%2.5f,%2.5f]\n", mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[X_POS], mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Y_POS], mpu9250_handle->data.mag.cal.scale_factors2[X_POS].array[Z_POS]);
+	printf("Mag factors2: [%2.5f,%2.5f,%2.5f]\n", mpu9250_handle->data.mag.cal.scale_factors2[X_POS][X_POS], mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Y_POS], mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Z_POS]);
 	ESP_ERROR_CHECK(mpu9250_mag_set_continuous_reading(mpu9250_handle));
 	return ESP_OK;
 }

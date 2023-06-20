@@ -90,10 +90,6 @@ static esp_err_t mpu9250_gyro_save_offset(mpu9250_handle_t mpu9250_handle) {
  ****************** A P I  I M P L E M E N T A T I O N ******************
  ************************************************************************/
 esp_err_t mpu9250_gyro_init(mpu9250_handle_t mpu9250_handle) {
-	for(uint8_t i = 0; i < 3; i++) {
-		mpu9250_handle->data.gyro.rpy.array[i] = 0;
-		mpu9250_handle->data.gyro.alfa[i] = 0.0f;
-	}
 	return ESP_OK;
 }
 

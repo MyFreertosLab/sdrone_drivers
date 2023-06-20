@@ -123,9 +123,9 @@ static esp_err_t mpu9250_acc_set_calibration_data(mpu9250_handle_t mpu9250_handl
 	mpu9250_handle->data.accel.acc_factors[1] = 2.423258e-04f;
 	mpu9250_handle->data.accel.acc_factors[2] = 2.398786e-04f;
 #else
-	mpu9250_handle->data.accel.acc_factors[0] = 1.0f;
-	mpu9250_handle->data.accel.acc_factors[1] = 1.0f;
-	mpu9250_handle->data.accel.acc_factors[2] = 1.0f;
+	mpu9250_handle->data.accel.cal.factors[1][1] = 1.0f;
+	mpu9250_handle->data.accel.cal.factors[2][2] = 1.0f;
+	mpu9250_handle->data.accel.cal.factors[3][3] = 1.0f;
 #endif
 	return ESP_OK;
 }
@@ -134,10 +134,6 @@ static esp_err_t mpu9250_acc_set_calibration_data(mpu9250_handle_t mpu9250_handl
  ****************** A P I  I M P L E M E N T A T I O N ******************
  ************************************************************************/
 esp_err_t mpu9250_acc_init(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.accel.rpy.xyz.x = 0;
-	mpu9250_handle->data.accel.rpy.xyz.y = 0;
-	mpu9250_handle->data.accel.rpy.xyz.z = 0;
-	mpu9250_handle->data.accel.acc_g_factor = 1.0f;
 	ESP_ERROR_CHECK(mpu9250_acc_set_calibration_data(mpu9250_handle));
 	return ESP_OK;
 }

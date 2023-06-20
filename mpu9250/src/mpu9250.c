@@ -35,28 +35,6 @@ static void IRAM_ATTR mpu9250_isr(void* mpu9250_handle)
 	}
 }
 
-void mpu9250_cb_init(mpu9250_cb_handle_t cb) {
-	cb->cursor = -1;
-	memset(cb, 0, sizeof(mpu9250_cb_t));
-}
-
-void mpu9250_cb_add(mpu9250_cb_handle_t cb, int16_t val) {
-	cb->cursor++;
-	cb->cursor %= CIRCULAR_BUFFER_SIZE;
-	cb->data[cb->cursor] = val;
-}
-void mpu9250_cb_means(mpu9250_cb_handle_t cb, int16_t* mean) {
-	int64_t sum = 0;
-	for(uint8_t i = 0; i < CIRCULAR_BUFFER_SIZE; i++) {
-		sum += cb->data[i];
-	}
-	*mean = sum/CIRCULAR_BUFFER_SIZE;
-}
-void mpu9250_cb_last(mpu9250_cb_handle_t cb, int16_t* val) {
-	*val = cb->data[cb->cursor];
-}
-
-
 /************************************************************************
  ****************** A P I  I M P L E M E N T A T I O N ******************
  ************************************************************************/
@@ -64,16 +42,6 @@ void mpu9250_cb_last(mpu9250_cb_handle_t cb, int16_t* val) {
 esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_spi_init(mpu9250_handle));
 	mpu9250_handle->data_ready_task_handle=xTaskGetCurrentTaskHandle();
-
-	mpu9250_handle->data.speed_if[X_POS] = 0.0f;
-	mpu9250_handle->data.speed_if[Y_POS] = 0.0f;
-	mpu9250_handle->data.speed_if[Z_POS] = 0.0f;
-
-	for(uint8_t i = 0; i < 3; i++) {
-		mpu9250_cb_init(&mpu9250_handle->data.accel.cb[i]);
-		mpu9250_cb_init(&mpu9250_handle->data.gyro.cb[i]);
-		mpu9250_cb_init(&mpu9250_handle->data.gyro.cb_alfa[i]);
-	}
 
 	ESP_ERROR_CHECK(
 			mpu9250_write8(mpu9250_handle, MPU9250_PWR_MGMT_1, CLKSEL_PLL));
@@ -100,11 +68,6 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 	/******************************************************************************************
 	 * GYRO & ACCEL
 	 ******************************************************************************************/
-	mpu9250_handle->data.acc_g_factor_initialized = 0;
-	mpu9250_handle->data.speed_if[X_POS] = 0.0f;
-	mpu9250_handle->data.speed_if[Y_POS] = 0.0f;
-	mpu9250_handle->data.speed_if[Z_POS] = 0.0f;
-	mpu9250_handle->data.vertical_acc_offset = 0.0f;
 
     // set Configuration Register
 //	printf("MPU9250: Gyro bandwidth 184Hz\n");
@@ -189,23 +152,25 @@ esp_err_t mpu9250_test_connection(mpu9250_handle_t mpu9250_handle) {
 	return (mpu9250_handle->whoami == MPU9250_ID ? ESP_OK : ESP_FAIL);
 
 }
+/*************************************************************************
+ * Attenzione:
+ *   allineo gli assi accel/gyro con gli assi del mag
+ *   X'=Y, Y'=X, Z'=-Z
+ *   roll = angolo rotazione su asse Y'
+ *   pitch = angolo rotazione su asse X'
+ *   yaw = angolo rotazione su asse Z'
+ *************************************************************************/
 esp_err_t mpu9250_load_raw_data(mpu9250_handle_t mpu9250_handle) {
 	uint8_t buff[26];
 	mpu9250_handle->data.timestamp = (uint32_t)(esp_timer_get_time()/1000);
 	esp_err_t ret = mpu9250_read_buff(mpu9250_handle, MPU9250_ACCEL_XOUT_H, buff, 26*8);
-	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_x = ((buff[0] << 8) | buff[1]);
-	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y = ((buff[2] << 8) | buff[3]);
-	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_z = ((buff[4] << 8) | buff[5]);
+	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y = ((buff[0] << 8) | buff[1]);
+	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_x = ((buff[2] << 8) | buff[3]);
+	mpu9250_handle->data.raw_data.data_s_xyz.accel_data_z = -((buff[4] << 8) | buff[5]);
 	mpu9250_handle->data.raw_data.data_s_xyz.temp_data = ((buff[6] << 8) | buff[7]);
-	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_x = ((buff[8] << 8) | buff[9]);
-	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_y = ((buff[10] << 8) | buff[11]);
-	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_z = ((buff[12] << 8) | buff[13]);
-
-	for(uint8_t i = 0; i < 3; i++) {
-		mpu9250_cb_add(&mpu9250_handle->data.accel.cb[i], mpu9250_handle->data.raw_data.data_s_vector.accel[i]);
-		mpu9250_cb_add(&mpu9250_handle->data.gyro.cb[i], mpu9250_handle->data.raw_data.data_s_vector.gyro[i]);
-	}
-
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_y = ((buff[8] << 8) | buff[9]);
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_x = ((buff[10] << 8) | buff[11]);
+	mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_z = -((buff[12] << 8) | buff[13]);
 
 	// read mag data
 	for(uint8_t i = 0; i<16; i++) {

@@ -4,7 +4,7 @@
 #include <esp_err.h>
 #include <driver/spi_master.h>
 #include "freertos/task.h"
-
+#include <mpu9250_utility.h>
 #define SDRONE_GRAVITY_ACCELERATION 9.80665f
 
 #define MPU9250_ID 0x71
@@ -308,153 +308,21 @@ enum clock_sel_e {
     NUM_CLK
 };
 
-/*********************************
-*********** Utilities ************
-*********************************/
-typedef union {
-   int8_t array[3];
-   struct {
-     int8_t x;
-     int8_t y;
-     int8_t z;
-   } xyz;
-} mpu9250_int8_3d_t;
-
-typedef union {
-   uint8_t array[3];
-   struct {
-     uint8_t x;
-     uint8_t y;
-     uint8_t z;
-   } xyz;
-} mpu9250_uint8_3d_t;
-
-typedef union {
-   int16_t array[3];
-   struct {
-     int16_t x;
-     int16_t y;
-     int16_t z;
-   } xyz;
-} mpu9250_int_3d_t;
-
-typedef union {
-   int32_t array[3];
-   struct {
-     int32_t x;
-     int32_t y;
-     int32_t z;
-   } xyz;
-} mpu9250_int32_3d_t;
-
-typedef union {
-   int64_t array[3];
-   struct {
-     int64_t x;
-     int64_t y;
-     int64_t z;
-   } xyz;
-} mpu9250_int64_3d_t;
-
-typedef union {
-   uint16_t array[3];
-   struct {
-     uint16_t x;
-     uint16_t y;
-     uint16_t z;
-   } xyz;
-} mpu9250_uint_3d_t;
-
-typedef union {
-   uint32_t array[3];
-   struct {
-     uint32_t x;
-     uint32_t y;
-     uint32_t z;
-   } xyz;
-} mpu9250_uint32_3d_t;
-
-typedef union {
-   uint64_t array[3];
-   struct {
-     uint64_t x;
-     uint64_t y;
-     uint64_t z;
-   } xyz;
-} mpu9250_uint64_3d_t;
-
-typedef union {
-   double array[3];
-   struct {
-     double x;
-     double y;
-     double z;
-   } xyz;
-} mpu9250_double_3d_t;
-
-typedef union {
-   float array[3];
-   struct {
-     float x;
-     float y;
-     float z;
-   } xyz;
-} mpu9250_float_3d_t;
-
-/* Se necessario usare
- * float fixed point
- * 22bit integer, 10bit decimal
- * precision: 1/(2^10-1) = 0,000977517
- *
- *
- */
-
-/*
- * we assume this cycle:
- * Calc Predition:
- *   X(k)=A*X(k-1)+B*u(k-1)
- *   P(k)=A*P(k-1)*A'+Q
- * Calc Update:
- *   K(k)=P(k)H'(H*P(k)*H'+R)^(-1)
- *   X(k)=X(k)-K(k)(Sample(k)-H*X(k))
- *   P(k)=(I-K(k)*H)*P(k)
- * with:
- *   A=H=1,
- *   B=Q=0,
- *   R=variance of state,
- * then:
- *   initialization:
- *     X(0)=fixed expected response
- *     P(0)=1
- *     Q=1.5
- *   cycle for each sample
- *     X(k)=X(k-1)
- *     P(k)=P(k-1)+Q
- *     K(k)=P(k)/(P(k)+R)
- *     X(k)=X(k)+K(k)*(Sample(k)-X(k))
- *     P(k)=(1-K(k))*P(k)
- */
-typedef struct {
-	uint8_t initialized;
-	int16_t X,sample;
-	uint16_t R;
-	float P,Q,K;
-} mpu9250_kalman_t;
 
 /* Offsets */
 typedef mpu9250_int_3d_t mpu9250_offset_t;
 typedef mpu9250_offset_t* mpu9250_offset_buff_t;
 
 /* Media */
-typedef mpu9250_int_3d_t mpu9250_means_t;
+typedef mpu9250_float_3d_t mpu9250_means_t;
 typedef mpu9250_means_t* mpu9250_means_buff_t;
 
 /* Varianza */
-typedef mpu9250_uint_3d_t mpu9250_var_t;
+typedef mpu9250_float_3d_t mpu9250_var_t;
 typedef mpu9250_var_t* mpu9250_var_buff_t;
 
 /* Scarto quadratico medio */
-typedef mpu9250_int_3d_t mpu9250_sqm_t;
+typedef mpu9250_float_3d_t mpu9250_sqm_t;
 typedef mpu9250_sqm_t* mpu9250_sqm_buff_t;
 
 typedef mpu9250_float_3d_t mpu9250_scale_factors_t;
@@ -466,26 +334,18 @@ typedef mpu9250_double_3d_t mpu9250_rpy_t;
 
 typedef struct {
     mpu9250_offset_t offset;
-    mpu9250_means_t means[4];
-    mpu9250_var_t var[4];
-    mpu9250_sqm_t sqm[4];
-    mpu9250_kalman_t kalman[3];
+    mpu9250_means_t means;
+    mpu9250_var_t var;
+    mpu9250_sqm_t sqm;
+    float factors[3][3];
 } mpu9250_cal_data_t;
 
 typedef struct {
     mpu9250_uint8_3d_t asa;
     mpu9250_scale_factors_t scale_factors; // factory factors
-	mpu9250_scale_factors_t scale_factors2[3]; // correction of factory factors
+	float scale_factors2[3][3]; // correction of factory factors
     mpu9250_offset_t offsets;
 } mpu9250_mag_cal_data_t;
-
-/* Circular Buffer */
-#define CIRCULAR_BUFFER_SIZE 5
-typedef struct {
-	int16_t data[CIRCULAR_BUFFER_SIZE];
-	uint8_t cursor;
-} mpu9250_cb_t;
-typedef mpu9250_cb_t* mpu9250_cb_handle_t;
 
 #define PI_2 6.283185307f
 #define PI 3.141592654f
@@ -521,18 +381,18 @@ typedef mpu9250_raw_data_t* mpu9250_raw_data_buff_t;
 typedef union {
    struct {
      float accel[3];
-     int16_t temp;
-     int16_t gyro[3];
+     float temp;
+     float gyro[3];
      float mag[3];
    } data_s_vector;
    struct {
      float accel_data_x;
      float accel_data_y;
      float accel_data_z;
-     int16_t temp_data;
-     int16_t gyro_data_x;
-     int16_t gyro_data_y;
-     int16_t gyro_data_z;
+     float temp_data;
+     float gyro_data_x;
+     float gyro_data_y;
+     float gyro_data_z;
      float mag_data_x;
      float mag_data_y;
      float mag_data_z;
@@ -547,12 +407,6 @@ typedef struct mpu9250_accel_s {
     mpu9250_cal_data_t cal; // calibration data
 	uint8_t fsr;
     uint16_t lsb;
-	mpu9250_cb_t cb[3]; // circular buffer
-	mpu9250_rpy_t rpy;
-    float acc_g_factor;
-    float acc_factors[3];
-    mpu9250_float_3d_t acc_g_bd; // acceleration expressed in g at body frame
-
 } mpu9250_accel_t;
 
 /*********************************
@@ -562,10 +416,6 @@ typedef struct mpu9250_gyro_s {
     mpu9250_cal_data_t cal; // calibration data
 	uint8_t fsr;
     float lsb;
-	mpu9250_cb_t cb[3]; // circular buffer
-	mpu9250_rpy_t rpy;
-	mpu9250_cb_t cb_alfa[3]; // circular buffer for alfa
-	float alfa[3];
 } mpu9250_gyro_t;
 
 typedef uint8_t mpu9250_int_status_t;
@@ -583,19 +433,6 @@ typedef struct mpu9250_mag_s {
 /*********************************
 ******** MPU9250 HANDLE **********
 *********************************/
-typedef enum {
-        IMU_TXRX_IGNORE = 0,
-        IMU_TXRX_TRANSMITTED = 1,
-        IMU_TXRX_RECEIVED = 2
-} imu_txrx_signal_t;
-typedef struct {
-	float cy; // cos(Yaw)
-	float cp; // cos(Pitch)
-	float cr; // cos(Roll)
-	float sy; // sin(Yaw)
-	float sp; // sin(Pitch)
-	float sr; // sin(Roll)
-} mpu9250_cossin_t;
 typedef struct {
 	uint32_t timestamp;
     mpu9250_raw_data_t raw_data;
@@ -603,14 +440,6 @@ typedef struct {
     mpu9250_accel_t accel;
     mpu9250_gyro_t gyro;
     mpu9250_mag_t mag;
-	float gravity_bf[3];
-	uint8_t acc_g_factor_initialized;
-	float speed_if[3]; // linear speed in inertial frame coordinates
-	float accel_without_g_bf[3]; // linear accel in body frame coordinates
-	float accel_without_g_if[3]; // estimation in inertial frame without yaw
-	float vertical_acc_offset; // vertical acc offset estimation
-	mpu9250_cossin_t cossin_actual;
-	volatile imu_txrx_signal_t txrx_signal;
 } mpu9250_data_t;
 
 typedef struct mpu9250_init_s {
@@ -632,11 +461,6 @@ typedef struct mpu9250_init_s {
 typedef mpu9250_init_t* mpu9250_handle_t;
 
 #define MPU9250_READ_FLAG 0x80
-
-/* Private Methods */
-void mpu9250_cb_add(mpu9250_cb_handle_t cb, int16_t val);
-void mpu9250_cb_means(mpu9250_cb_handle_t cb, int16_t* mean);
-void mpu9250_cb_last(mpu9250_cb_handle_t cb, int16_t* val);
 
 /* Public Methods */
 /* Set up APIs */
