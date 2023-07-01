@@ -11,13 +11,15 @@
 #include <mpu9250_spi.h>
 #include <mpu9250_mag.h>
 #include <math.h>
-#include "esp_system.h"
+#include <esp_system.h>
+#include <esp_log.h>
 #include <nvs_flash.h>
 #include <nvs.h>
 
 /************************************************************************
  ************** P R I V A T E  I M P L E M E N T A T I O N **************
  ************************************************************************/
+static const char *TAG = "my_mpu9250_mag";
 
 static esp_err_t WriteAk8963Register(mpu9250_handle_t mpu9250_handle, uint8_t reg,
 		uint8_t data) {
@@ -134,36 +136,78 @@ prova$invA
 [2,] -7.310792e-05  4.351860e-03  7.330909e-05
 [3,] -2.383212e-04  7.330909e-05  4.840089e-03
  */
-static esp_err_t mpu9250_mag_set_calibration_data(mpu9250_handle_t mpu9250_handle) {
-#ifdef CONFIG_ESP_DATA_CAL
-	mpu9250_handle->data.mag.cal.offsets.array[X_POS] = 125;
-	mpu9250_handle->data.mag.cal.offsets.array[Y_POS] = 105;
-	mpu9250_handle->data.mag.cal.offsets.array[Z_POS] = 104;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][X_POS] =  4.041199e-03f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Y_POS] = -3.100427e-05f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Z_POS] = -2.122374e-04f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][X_POS] = -3.100427e-05f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][Y_POS] =  4.245328e-03f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][Z_POS] =  4.912409e-05f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][X_POS] = -2.122374e-04f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][Y_POS] =  4.912409e-05f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][Z_POS] =  4.464546e-03f;
-#else
-	mpu9250_handle->data.mag.cal.offsets.array[X_POS] = 0;
-	mpu9250_handle->data.mag.cal.offsets.array[Y_POS] = 0;
-	mpu9250_handle->data.mag.cal.offsets.array[Z_POS] = 0;
+static esp_err_t mpu9250_mag_load_default_calibration_params(
+		mpu9250_handle_t mpu9250_handle) {
+	mpu9250_handle->data.mag.cal.offsets[X_POS] = 0;
+	mpu9250_handle->data.mag.cal.offsets[Y_POS] = 0;
+	mpu9250_handle->data.mag.cal.offsets[Z_POS] = 0;
 
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][X_POS] =  1.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Y_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Z_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][X_POS] =  1.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][Y_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Y_POS][Z_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][X_POS] =  1.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][Y_POS] =  0.0f;
-	mpu9250_handle->data.mag.cal.scale_factors2[Z_POS][Z_POS] =  0.0f;
-#endif
+	mpu9250_handle->data.mag.cal.factors[X_POS][X_POS] = 1.0f;
+	mpu9250_handle->data.mag.cal.factors[X_POS][Y_POS] = 0.0f;
+	mpu9250_handle->data.mag.cal.factors[X_POS][Z_POS] = 0.0f;
+	mpu9250_handle->data.mag.cal.factors[Y_POS][X_POS] = 0.0f;
+	mpu9250_handle->data.mag.cal.factors[Y_POS][Y_POS] = 1.0f;
+	mpu9250_handle->data.mag.cal.factors[Y_POS][Z_POS] = 0.0f;
+	mpu9250_handle->data.mag.cal.factors[Z_POS][X_POS] = 0.0f;
+	mpu9250_handle->data.mag.cal.factors[Z_POS][Y_POS] = 0.0f;
+	mpu9250_handle->data.mag.cal.factors[Z_POS][Z_POS] = 1.0f;
 	printf("Mag: loaded default calibration data\n");
+	return ESP_OK;
+}
+
+esp_err_t mpu9250_mag_load_calibration_params(
+		mpu9250_handle_t mpu9250_handle) {
+	nvs_handle_t nvs_handle = (nvs_handle_t)mpu9250_handle->data.nvs_cal_data;
+
+    // Lettura del blob di 48 byte dalla memoria flash
+    uint8_t blob[48];
+    size_t blob_size = sizeof(blob);
+    esp_err_t err = nvs_get_blob(nvs_handle, "mag_model", blob, &blob_size);
+    if (err != ESP_OK) {
+    	ESP_LOGW(TAG, "Mag Calibration Params are not flashed: %s\n", esp_err_to_name(err));
+        ESP_ERROR_CHECK(mpu9250_mag_load_default_calibration_params(mpu9250_handle));
+        return ESP_OK;
+    }
+
+    // Controllo della dimensione del blob
+    if (blob_size != 48) {
+    	ESP_LOGW(TAG, "Mag params: Dimensione del blob non corretta (%d). I load default params ...", blob_size);
+        ESP_ERROR_CHECK(mpu9250_mag_load_default_calibration_params(mpu9250_handle));
+        return ESP_OK;
+
+    }
+
+    // Conversione del blob in una matrice float 3x3
+    memcpy(mpu9250_handle->data.mag.cal.factors, blob, 36);
+    memcpy(mpu9250_handle->data.mag.cal.offsets, (blob+36), 12);
+    ESP_LOGI(TAG, "Mag matrix:\n[[%5.5f,%5.5f,%5.5f]\n,[%5.5f,%5.5f,%5.5f]\n,[%5.5f,%5.5f,%5.5f]]\n",
+    		mpu9250_handle->data.mag.cal.factors[X_POS][X_POS],
+    		mpu9250_handle->data.mag.cal.factors[X_POS][Y_POS],
+    		mpu9250_handle->data.mag.cal.factors[X_POS][Z_POS],
+    		mpu9250_handle->data.mag.cal.factors[Y_POS][X_POS],
+    		mpu9250_handle->data.mag.cal.factors[Y_POS][Y_POS],
+    		mpu9250_handle->data.mag.cal.factors[Y_POS][Z_POS],
+    		mpu9250_handle->data.mag.cal.factors[Z_POS][X_POS],
+    		mpu9250_handle->data.mag.cal.factors[Z_POS][Y_POS],
+    		mpu9250_handle->data.mag.cal.factors[Z_POS][Z_POS]
+    		);
+    ESP_LOGI(TAG, "Mag bias:\n [%5.5f,%5.5f,%5.5f]\n",
+	   		mpu9250_handle->data.mag.cal.offsets[X_POS],
+	   		mpu9250_handle->data.mag.cal.offsets[Y_POS],
+	   		mpu9250_handle->data.mag.cal.offsets[Z_POS]
+    		);
+	return ESP_OK;
+}
+
+esp_err_t mpu9250_mag_save_calibration_params(mpu9250_handle_t mpu9250_handle, char* data, int data_len) {
+    if (data_len == 48) {  // 3x3 matrix + 3x1 bias = 12 floats = 12 * sizeof(float) = 12x4 = 48 bytes
+        // Save the matrix to flash
+    	ESP_ERROR_CHECK(nvs_set_blob((nvs_handle_t)mpu9250_handle->data.nvs_cal_data, "mag_model", data, data_len));
+        nvs_commit((nvs_handle_t)mpu9250_handle->data.nvs_cal_data);
+        ESP_LOGI(TAG, "Mag matrix+bias saved to flash");
+    } else {
+    	ESP_LOGE(TAG, "Mag Invalid matrix+bias data length");
+    }
 	return ESP_OK;
 }
 
@@ -193,20 +237,20 @@ static esp_err_t mpu9250_mag_prepare(mpu9250_handle_t mpu9250_handle) {
     ESP_ERROR_CHECK(ReadAk8963Registers(mpu9250_handle, AK8963_ASAX, 3));
     vTaskDelay(pdMS_TO_TICKS(10));
 
-    ESP_ERROR_CHECK(mpu9250_read_buff(mpu9250_handle, MPU9250_EXT_SENS_DATA_00, mpu9250_handle->data.mag.cal.asa.array, 3*8));
+    ESP_ERROR_CHECK(mpu9250_read_buff(mpu9250_handle, MPU9250_EXT_SENS_DATA_00, mpu9250_handle->data.mag.factory_cal.asa.array, 3*8));
 
-    uint8_t asax = mpu9250_handle->data.mag.cal.asa.array[0];
-    uint8_t asay = mpu9250_handle->data.mag.cal.asa.array[1];
-    uint8_t asaz = mpu9250_handle->data.mag.cal.asa.array[2];
-    mpu9250_handle->data.mag.cal.asa.array[0] =  asax;
-    mpu9250_handle->data.mag.cal.asa.array[1] =  asay;
-    mpu9250_handle->data.mag.cal.asa.array[2] =  asaz;
+    uint8_t asax = mpu9250_handle->data.mag.factory_cal.asa.array[X_POS];
+    uint8_t asay = mpu9250_handle->data.mag.factory_cal.asa.array[Y_POS];
+    uint8_t asaz = mpu9250_handle->data.mag.factory_cal.asa.array[Z_POS];
+    mpu9250_handle->data.mag.factory_cal.asa.array[X_POS] =  asax;
+    mpu9250_handle->data.mag.factory_cal.asa.array[Y_POS] =  asay;
+    mpu9250_handle->data.mag.factory_cal.asa.array[Z_POS] =  asaz;
 
     for(uint8_t i = 0; i < 3; i++) {
-    	mpu9250_handle->data.mag.cal.scale_factors.array[i] = (((float)(mpu9250_handle->data.mag.cal.asa.array[i] - 128))/2.0f / 128.0f + 1.0f) * (4912.0f / 32768.0f);
+    	mpu9250_handle->data.mag.factory_cal.factors.array[i] = (((float)(mpu9250_handle->data.mag.factory_cal.asa.array[i] - 128))/2.0f / 128.0f + 1.0f) * (4912.0f / 32768.0f);
     }
-    printf("mag_asa [%d, %d, %d]\n", mpu9250_handle->data.mag.cal.asa.array[0], mpu9250_handle->data.mag.cal.asa.array[1], mpu9250_handle->data.mag.cal.asa.array[2]);
-    printf("mag_scale [%5.5f, %5.5f, %5.5f]\n", mpu9250_handle->data.mag.cal.scale_factors.array[0], mpu9250_handle->data.mag.cal.scale_factors.array[1], mpu9250_handle->data.mag.cal.scale_factors.array[2]);
+    printf("mag_asa [%d, %d, %d]\n", mpu9250_handle->data.mag.factory_cal.asa.array[X_POS], mpu9250_handle->data.mag.factory_cal.asa.array[Y_POS], mpu9250_handle->data.mag.factory_cal.asa.array[Z_POS]);
+    printf("mag_scale [%5.5f, %5.5f, %5.5f]\n", mpu9250_handle->data.mag.factory_cal.factors.array[X_POS], mpu9250_handle->data.mag.factory_cal.factors.array[Y_POS], mpu9250_handle->data.mag.factory_cal.factors.array[Z_POS]);
 
     ESP_ERROR_CHECK(
     		WriteAk8963Register(mpu9250_handle, AK8963_CNTL1, AK8963_PWR_DOWN));
@@ -237,23 +281,28 @@ static esp_err_t mpu9250_mag_prepare(mpu9250_handle_t mpu9250_handle) {
  ************************************************************************/
 esp_err_t mpu9250_mag_init(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_mag_prepare(mpu9250_handle));
-	ESP_ERROR_CHECK(mpu9250_mag_set_calibration_data(mpu9250_handle));
+	ESP_ERROR_CHECK(mpu9250_mag_load_calibration_params(mpu9250_handle));
 
-	printf("Mag offsets: [%d,%d,%d]\n", mpu9250_handle->data.mag.cal.offsets.array[X_POS], mpu9250_handle->data.mag.cal.offsets.array[Y_POS], mpu9250_handle->data.mag.cal.offsets.array[Z_POS]);
-	printf("Mag factors2: [%2.5f,%2.5f,%2.5f]\n", mpu9250_handle->data.mag.cal.scale_factors2[X_POS][X_POS], mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Y_POS], mpu9250_handle->data.mag.cal.scale_factors2[X_POS][Z_POS]);
+	// set calibrated data to zero ..
+	mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = 0.0f;
+	mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y = 0.0f;
+	mpu9250_handle->data.cal_data.data_s_xyz.mag_data_z = 0.0f;
+
+	printf("Mag offsets: [%3.5f,%3.5f,%3.5f]\n", mpu9250_handle->data.mag.cal.offsets[X_POS], mpu9250_handle->data.mag.cal.offsets[Y_POS], mpu9250_handle->data.mag.cal.offsets[Z_POS]);
+	printf("Mag factors2: [%2.5f,%2.5f,%2.5f]\n", mpu9250_handle->data.mag.cal.factors[X_POS][X_POS], mpu9250_handle->data.mag.cal.factors[Y_POS][Y_POS], mpu9250_handle->data.mag.cal.factors[Z_POS][Z_POS]);
 	ESP_ERROR_CHECK(mpu9250_mag_set_continuous_reading(mpu9250_handle));
 	return ESP_OK;
 }
 esp_err_t mpu9250_mag_load_cal_data(mpu9250_handle_t mpu9250_handle) {
-#ifdef CONFIG_ESP_DATA_CAL
 	if(mpu9250_handle->data.mag.drdy) {
-		// Cambio assi dei dati rilevati invertendo X con Y e ponendo negativo Z
-		// in questo modo sono conformi con Accel
-		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = mpu9250_handle->data.mag.cal.scale_factors2[X_POS].xyz.x*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets.xyz.x) + mpu9250_handle->data.mag.cal.scale_factors2[X_POS].xyz.y*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets.xyz.y) + mpu9250_handle->data.mag.cal.scale_factors2[X_POS].xyz.z*(-mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets.xyz.z);
-		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y = mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].xyz.x*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets.xyz.x) + mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].xyz.y*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets.xyz.y) + mpu9250_handle->data.mag.cal.scale_factors2[Y_POS].xyz.z*(-mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets.xyz.z);
-		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_z = mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].xyz.x*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets.xyz.x) + mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].xyz.y*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets.xyz.y) + mpu9250_handle->data.mag.cal.scale_factors2[Z_POS].xyz.z*(-mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets.xyz.z);
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = mpu9250_handle->data.mag.cal.factors[X_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets[X_POS]) + mpu9250_handle->data.mag.cal.factors[X_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets[Y_POS]) + mpu9250_handle->data.mag.cal.factors[X_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets[Z_POS]);
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y = mpu9250_handle->data.mag.cal.factors[Y_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets[X_POS]) + mpu9250_handle->data.mag.cal.factors[Y_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets[Y_POS]) + mpu9250_handle->data.mag.cal.factors[Y_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets[Z_POS]);
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = mpu9250_handle->data.mag.cal.factors[Z_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets[X_POS]) + mpu9250_handle->data.mag.cal.factors[Z_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets[Y_POS]) + mpu9250_handle->data.mag.cal.factors[Z_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets[Z_POS]);
+	} else {
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = 0.0f;
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y = 0.0f;
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_z = 0.0f;
 	}
-#endif
 	return ESP_OK;
 }
 esp_err_t mpu9250_mag_load_precision(mpu9250_handle_t mpu9250_handle) {

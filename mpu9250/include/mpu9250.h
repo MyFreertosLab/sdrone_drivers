@@ -308,43 +308,19 @@ enum clock_sel_e {
     NUM_CLK
 };
 
-
-/* Offsets */
-typedef mpu9250_int_3d_t mpu9250_offset_t;
-typedef mpu9250_offset_t* mpu9250_offset_buff_t;
-
-/* Media */
-typedef mpu9250_float_3d_t mpu9250_means_t;
-typedef mpu9250_means_t* mpu9250_means_buff_t;
-
-/* Varianza */
-typedef mpu9250_float_3d_t mpu9250_var_t;
-typedef mpu9250_var_t* mpu9250_var_buff_t;
-
-/* Scarto quadratico medio */
-typedef mpu9250_float_3d_t mpu9250_sqm_t;
-typedef mpu9250_sqm_t* mpu9250_sqm_buff_t;
-
-typedef mpu9250_float_3d_t mpu9250_scale_factors_t;
-typedef mpu9250_float_3d_t mpu9250_scaled_offset_t;
-
-
 /* RPY */
 typedef mpu9250_double_3d_t mpu9250_rpy_t;
 
 typedef struct {
-    mpu9250_offset_t offset;
-    mpu9250_means_t means;
-    mpu9250_var_t var;
-    mpu9250_sqm_t sqm;
+    float offsets[3];
     float factors[3][3];
 } mpu9250_cal_data_t;
 
+typedef mpu9250_float_3d_t mpu9250_scale_factors_t;
+
 typedef struct {
     mpu9250_uint8_3d_t asa;
-    mpu9250_scale_factors_t scale_factors; // factory factors
-	float scale_factors2[3][3]; // correction of factory factors
-    mpu9250_offset_t offsets;
+    mpu9250_scale_factors_t factors; // factory factors
 } mpu9250_mag_cal_data_t;
 
 #define PI_2 6.283185307f
@@ -413,7 +389,7 @@ typedef struct mpu9250_accel_s {
 *********** GYROSCOPE ************
 *********************************/
 typedef struct mpu9250_gyro_s {
-    mpu9250_cal_data_t cal; // calibration data
+    int16_t device_offsets[3]; // device offset (not my calibration params)
 	uint8_t fsr;
     float lsb;
 } mpu9250_gyro_t;
@@ -424,7 +400,8 @@ typedef uint8_t mpu9250_int_status_t;
 ********* MAGNETOMETER ***********
 *********************************/
 typedef struct mpu9250_mag_s {
-	mpu9250_mag_cal_data_t cal; // mag calibration data
+	mpu9250_mag_cal_data_t factory_cal; // factory mag calibration data
+    mpu9250_cal_data_t cal; // my calibration data
 	mag_precision_e precision;
     float precision_factor;
     uint8_t drdy;
@@ -437,6 +414,7 @@ typedef struct {
 	uint32_t timestamp;
     mpu9250_raw_data_t raw_data;
     mpu9250_calibrated_data_t cal_data;
+    uint32_t nvs_cal_data;
     mpu9250_accel_t accel;
     mpu9250_gyro_t gyro;
     mpu9250_mag_t mag;

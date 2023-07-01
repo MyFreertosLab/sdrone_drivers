@@ -75,12 +75,12 @@ static esp_err_t mpu9250_gyro_calc_lsb(mpu9250_handle_t mpu9250_handle) {
 
 static esp_err_t mpu9250_gyro_save_offset(mpu9250_handle_t mpu9250_handle) {
 	uint8_t buff[8];
-	buff[0] = mpu9250_handle->data.gyro.cal.offset.xyz.x >> 8;
-	buff[1] = mpu9250_handle->data.gyro.cal.offset.xyz.x & 0x00FF;
-	buff[2] = mpu9250_handle->data.gyro.cal.offset.xyz.y >> 8;
-	buff[3] = mpu9250_handle->data.gyro.cal.offset.xyz.y & 0x00FF;
-	buff[4] = mpu9250_handle->data.gyro.cal.offset.xyz.z >> 8;
-	buff[5] = mpu9250_handle->data.gyro.cal.offset.xyz.z & 0x00FF;
+	buff[0] = mpu9250_handle->data.gyro.device_offsets[X_POS] >> 8;
+	buff[1] = mpu9250_handle->data.gyro.device_offsets[X_POS] & 0x00FF;
+	buff[2] = mpu9250_handle->data.gyro.device_offsets[Y_POS] >> 8;
+	buff[3] = mpu9250_handle->data.gyro.device_offsets[Y_POS] & 0x00FF;
+	buff[4] = mpu9250_handle->data.gyro.device_offsets[Z_POS] >> 8;
+	buff[5] = mpu9250_handle->data.gyro.device_offsets[Z_POS] & 0x00FF;
 
 	esp_err_t ret = mpu9250_write_buff(mpu9250_handle, MPU9250_XG_OFFSET_H, buff, 6*8);
 	return ret;
@@ -110,23 +110,21 @@ esp_err_t mpu9250_gyro_set_fsr(mpu9250_handle_t mpu9250_handle, uint8_t fsr) {
 esp_err_t mpu9250_gyro_load_offset(mpu9250_handle_t mpu9250_handle) {
 	uint8_t buff[6];
 	esp_err_t ret = mpu9250_read_buff(mpu9250_handle, MPU9250_XG_OFFSET_H, buff, 6*8);
-	mpu9250_handle->data.gyro.cal.offset.xyz.x = ((buff[0] << 8) + buff[1]);
-	mpu9250_handle->data.gyro.cal.offset.xyz.y = ((buff[2] << 8) + buff[3]);
-	mpu9250_handle->data.gyro.cal.offset.xyz.z = ((buff[4] << 8) + buff[5]);
+	mpu9250_handle->data.gyro.device_offsets[X_POS] = ((buff[0] << 8) + buff[1]);
+	mpu9250_handle->data.gyro.device_offsets[Y_POS] = ((buff[2] << 8) + buff[3]);
+	mpu9250_handle->data.gyro.device_offsets[Z_POS] = ((buff[4] << 8) + buff[5]);
 	return ret;
 }
 
 esp_err_t mpu9250_gyro_set_offset(mpu9250_handle_t mpu9250_handle, int16_t xoff, int16_t yoff, int16_t zoff) {
-	mpu9250_handle->data.gyro.cal.offset.xyz.x = xoff;
-	mpu9250_handle->data.gyro.cal.offset.xyz.y = yoff;
-	mpu9250_handle->data.gyro.cal.offset.xyz.z = zoff;
+	mpu9250_handle->data.gyro.device_offsets[X_POS] = xoff;
+	mpu9250_handle->data.gyro.device_offsets[Y_POS] = yoff;
+	mpu9250_handle->data.gyro.device_offsets[Z_POS] = zoff;
 	return mpu9250_gyro_save_offset(mpu9250_handle);
 }
 esp_err_t mpu9250_gyro_load_cal_data(mpu9250_handle_t mpu9250_handle) {
-#ifdef CONFIG_ESP_DATA_CAL
-	mpu9250_handle->data.cal_data.data_s_xyz.gyro_data_x = mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_x;
-	mpu9250_handle->data.cal_data.data_s_xyz.gyro_data_y = mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_y;
-	mpu9250_handle->data.cal_data.data_s_xyz.gyro_data_z = mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_z;
-#endif
+	mpu9250_handle->data.cal_data.data_s_xyz.gyro_data_x = (float)mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_x;
+	mpu9250_handle->data.cal_data.data_s_xyz.gyro_data_y = (float)mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_y;
+	mpu9250_handle->data.cal_data.data_s_xyz.gyro_data_z = (float)mpu9250_handle->data.raw_data.data_s_xyz.gyro_data_z;
 	return ESP_OK;
 }

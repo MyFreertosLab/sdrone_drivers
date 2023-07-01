@@ -13,5 +13,7 @@ esp_err_t mpu9250_acc_init(mpu9250_handle_t mpu9250_handle);
 esp_err_t mpu9250_acc_load_fsr(mpu9250_handle_t mpu9250_handle);
 esp_err_t mpu9250_acc_set_fsr(mpu9250_handle_t mpu9250_handle, uint8_t fsr);
 esp_err_t mpu9250_acc_load_cal_data(mpu9250_handle_t mpu9250_handle);
+esp_err_t mpu9250_acc_save_calibration_params(mpu9250_handle_t mpu9250_handle, char* data, int data_len);
+esp_err_t mpu9250_acc_load_calibration_params(mpu9250_handle_t mpu9250_handle);
 
 #endif /* COMPONENTS_MPU9250_INCLUDE_MPU9250_ACCEL_H_ */
