@@ -199,7 +199,7 @@ esp_err_t mpu9250_load_cal_data(mpu9250_handle_t mpu9250_handle) {
 	ESP_ERROR_CHECK(mpu9250_gyro_load_cal_data(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_acc_load_cal_data(mpu9250_handle));
 	ESP_ERROR_CHECK(mpu9250_mag_load_cal_data(mpu9250_handle));
-	mpu9250_handle->data.cal_data.data_s_xyz.temp_data = mpu9250_handle->data.raw_data.data_s_xyz.temp_data;
+	mpu9250_handle->data.cal_data.data_s_xyz.temp_data = (float)mpu9250_handle->data.raw_data.data_s_xyz.temp_data/333.87 + 21.0f;
 	return ESP_OK;
 }
 esp_err_t mpu9250_load_data(mpu9250_handle_t mpu9250_handle) {
