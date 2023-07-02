@@ -389,6 +389,7 @@ typedef struct mpu9250_accel_s {
 *********** GYROSCOPE ************
 *********************************/
 typedef struct mpu9250_gyro_s {
+    mpu9250_cal_data_t cal; // calibration data
     int16_t device_offsets[3]; // device offset (not my calibration params)
 	uint8_t fsr;
     float lsb;
