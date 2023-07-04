@@ -75,6 +75,9 @@ static esp_err_t mpu9250_acc_load_default_calibration_params(
 	mpu9250_handle->data.accel.cal.offsets[X_POS] = 0.0;
 	mpu9250_handle->data.accel.cal.offsets[Y_POS] = 0.0;
 	mpu9250_handle->data.accel.cal.offsets[Z_POS] = 0.0;
+	mpu9250_handle->data.accel.cal.variances[X_POS] = 0.0;
+	mpu9250_handle->data.accel.cal.variances[Y_POS] = 0.0;
+	mpu9250_handle->data.accel.cal.variances[Z_POS] = 0.0;
 	return ESP_OK;
 }
 
@@ -83,7 +86,7 @@ esp_err_t mpu9250_acc_load_calibration_params(
 	nvs_handle_t nvs_handle = (nvs_handle_t)mpu9250_handle->data.nvs_cal_data;
 
     // Lettura del blob di 48 byte dalla memoria flash
-    uint8_t blob[48];
+    uint8_t blob[60];
     size_t blob_size = sizeof(blob);
     esp_err_t err = nvs_get_blob(nvs_handle, "acc_model", blob, &blob_size);
     if (err != ESP_OK) {
@@ -93,7 +96,7 @@ esp_err_t mpu9250_acc_load_calibration_params(
     }
 
     // Controllo della dimensione del blob
-    if (blob_size != 48) {
+    if (blob_size != 60) {
     	ESP_LOGW(TAG, "Acc params: Dimensione del blob non corretta (%d). I load default params ...", blob_size);
         ESP_ERROR_CHECK(mpu9250_acc_load_default_calibration_params(mpu9250_handle));
         return ESP_OK;
@@ -102,6 +105,7 @@ esp_err_t mpu9250_acc_load_calibration_params(
     // Conversione del blob in una matrice float 3x3
     memcpy(mpu9250_handle->data.accel.cal.factors, blob, 36);
     memcpy(mpu9250_handle->data.accel.cal.offsets, (blob+36), 12);
+    memcpy(mpu9250_handle->data.accel.cal.variances, (blob+48), 12);
     ESP_LOGI(TAG, "Acc matrix:\n[[%5.5f,%5.5f,%5.5f]\n,[%5.5f,%5.5f,%5.5f]\n,[%5.5f,%5.5f,%5.5f]]\n",
     		mpu9250_handle->data.accel.cal.factors[X_POS][X_POS],
     		mpu9250_handle->data.accel.cal.factors[X_POS][Y_POS],
@@ -118,11 +122,16 @@ esp_err_t mpu9250_acc_load_calibration_params(
 	   		mpu9250_handle->data.accel.cal.offsets[Y_POS],
 	   		mpu9250_handle->data.accel.cal.offsets[Z_POS]
     		);
+    ESP_LOGI(TAG, "Acc variances:\n [%5.5f,%5.5f,%5.5f]\n",
+	   		mpu9250_handle->data.accel.cal.variances[X_POS],
+	   		mpu9250_handle->data.accel.cal.variances[Y_POS],
+	   		mpu9250_handle->data.accel.cal.variances[Z_POS]
+    		);
 	return ESP_OK;
 }
 
 esp_err_t mpu9250_acc_save_calibration_params(mpu9250_handle_t mpu9250_handle, char* data, int data_len) {
-    if (data_len == 48) {  // 3x3 matrix + 3x1 bias = 12 floats = 12 * sizeof(float) = 12x4 = 48 bytes
+    if (data_len == 60) {  // 3x3 matrix + 3x1 bias + 3x1 variances = 15 floats = 15 * sizeof(float) = 15x4 = 60 bytes
         // Save the matrix to flash
         ESP_ERROR_CHECK(nvs_set_blob((nvs_handle_t)mpu9250_handle->data.nvs_cal_data, "acc_model", data, data_len));
         ESP_ERROR_CHECK(nvs_commit((nvs_handle_t)mpu9250_handle->data.nvs_cal_data));

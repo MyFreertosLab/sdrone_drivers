@@ -313,6 +313,7 @@ typedef mpu9250_double_3d_t mpu9250_rpy_t;
 
 typedef struct {
     float offsets[3];
+    float variances[3];
     float factors[3][3];
 } mpu9250_cal_data_t;
 
