@@ -439,6 +439,7 @@ typedef struct mpu9250_init_s {
 } mpu9250_init_t;
 
 typedef mpu9250_init_t* mpu9250_handle_t;
+extern mpu9250_handle_t mpu9250_handle;
 
 #define MPU9250_READ_FLAG 0x80
 

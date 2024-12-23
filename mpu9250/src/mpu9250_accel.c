@@ -59,7 +59,6 @@ static esp_err_t mpu9250_acc_calc_lsb(mpu9250_handle_t mpu9250_handle) {
 	return ESP_OK;
 }
 
-
 static esp_err_t mpu9250_acc_load_default_calibration_params(
 		mpu9250_handle_t mpu9250_handle) {
 
@@ -165,8 +164,12 @@ esp_err_t mpu9250_acc_set_fsr(mpu9250_handle_t mpu9250_handle, uint8_t fsr) {
 }
 
 esp_err_t mpu9250_acc_load_cal_data(mpu9250_handle_t mpu9250_handle) {
-	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_x = mpu9250_handle->data.accel.cal.factors[X_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_x - mpu9250_handle->data.accel.cal.offsets[X_POS]) + mpu9250_handle->data.accel.cal.factors[X_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y - mpu9250_handle->data.accel.cal.offsets[Y_POS]) + mpu9250_handle->data.accel.cal.factors[X_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_z - mpu9250_handle->data.accel.cal.offsets[Z_POS]);
-	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_y = mpu9250_handle->data.accel.cal.factors[Y_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_x - mpu9250_handle->data.accel.cal.offsets[X_POS]) + mpu9250_handle->data.accel.cal.factors[Y_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y - mpu9250_handle->data.accel.cal.offsets[Y_POS]) + mpu9250_handle->data.accel.cal.factors[Y_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_z - mpu9250_handle->data.accel.cal.offsets[Z_POS]);
-	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z = mpu9250_handle->data.accel.cal.factors[Z_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_x - mpu9250_handle->data.accel.cal.offsets[X_POS]) + mpu9250_handle->data.accel.cal.factors[Z_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y - mpu9250_handle->data.accel.cal.offsets[Y_POS]) + mpu9250_handle->data.accel.cal.factors[Z_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.accel_data_z - mpu9250_handle->data.accel.cal.offsets[Z_POS]);
+	float biased_x = ((float)mpu9250_handle->data.raw_data.data_s_xyz.accel_data_x/(float)mpu9250_handle->data.accel.lsb - mpu9250_handle->data.accel.cal.offsets[X_POS]);
+	float biased_y = ((float)mpu9250_handle->data.raw_data.data_s_xyz.accel_data_y/(float)mpu9250_handle->data.accel.lsb - mpu9250_handle->data.accel.cal.offsets[Y_POS]);
+	float biased_z = ((float)mpu9250_handle->data.raw_data.data_s_xyz.accel_data_z/(float)mpu9250_handle->data.accel.lsb - mpu9250_handle->data.accel.cal.offsets[Z_POS]);
+	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_x = mpu9250_handle->data.accel.cal.factors[X_POS][X_POS]*biased_x + mpu9250_handle->data.accel.cal.factors[X_POS][Y_POS]*biased_y + mpu9250_handle->data.accel.cal.factors[X_POS][Z_POS]*biased_z;
+	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_y = mpu9250_handle->data.accel.cal.factors[Y_POS][X_POS]*biased_x + mpu9250_handle->data.accel.cal.factors[Y_POS][Y_POS]*biased_y + mpu9250_handle->data.accel.cal.factors[Y_POS][Z_POS]*biased_z;
+	mpu9250_handle->data.cal_data.data_s_xyz.accel_data_z = mpu9250_handle->data.accel.cal.factors[Z_POS][X_POS]*biased_x + mpu9250_handle->data.accel.cal.factors[Z_POS][Y_POS]*biased_y + mpu9250_handle->data.accel.cal.factors[Z_POS][Z_POS]*biased_z;
+
 	return ESP_OK;
 }

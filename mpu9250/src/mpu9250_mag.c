@@ -248,13 +248,6 @@ static esp_err_t mpu9250_mag_prepare(mpu9250_handle_t mpu9250_handle) {
 
     ESP_ERROR_CHECK(mpu9250_read_buff(mpu9250_handle, MPU9250_EXT_SENS_DATA_00, mpu9250_handle->data.mag.factory_cal.asa.array, 3*8));
 
-    uint8_t asax = mpu9250_handle->data.mag.factory_cal.asa.array[X_POS];
-    uint8_t asay = mpu9250_handle->data.mag.factory_cal.asa.array[Y_POS];
-    uint8_t asaz = mpu9250_handle->data.mag.factory_cal.asa.array[Z_POS];
-    mpu9250_handle->data.mag.factory_cal.asa.array[X_POS] =  asax;
-    mpu9250_handle->data.mag.factory_cal.asa.array[Y_POS] =  asay;
-    mpu9250_handle->data.mag.factory_cal.asa.array[Z_POS] =  asaz;
-
     for(uint8_t i = 0; i < 3; i++) {
     	mpu9250_handle->data.mag.factory_cal.factors.array[i] = (((float)(mpu9250_handle->data.mag.factory_cal.asa.array[i] - 128))/2.0f / 128.0f + 1.0f) * (4912.0f / 32768.0f);
     }
@@ -304,9 +297,12 @@ esp_err_t mpu9250_mag_init(mpu9250_handle_t mpu9250_handle) {
 }
 esp_err_t mpu9250_mag_load_cal_data(mpu9250_handle_t mpu9250_handle) {
 	if(mpu9250_handle->data.mag.drdy) {
-		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = mpu9250_handle->data.mag.cal.factors[X_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets[X_POS]) + mpu9250_handle->data.mag.cal.factors[X_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets[Y_POS]) + mpu9250_handle->data.mag.cal.factors[X_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets[Z_POS]);
-		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y = mpu9250_handle->data.mag.cal.factors[Y_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets[X_POS]) + mpu9250_handle->data.mag.cal.factors[Y_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets[Y_POS]) + mpu9250_handle->data.mag.cal.factors[Y_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets[Z_POS]);
-		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_z = mpu9250_handle->data.mag.cal.factors[Z_POS][X_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x - mpu9250_handle->data.mag.cal.offsets[X_POS]) + mpu9250_handle->data.mag.cal.factors[Z_POS][Y_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y - mpu9250_handle->data.mag.cal.offsets[Y_POS]) + mpu9250_handle->data.mag.cal.factors[Z_POS][Z_POS]*(mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z - mpu9250_handle->data.mag.cal.offsets[Z_POS]);
+		float biased_x = ((float)mpu9250_handle->data.raw_data.data_s_xyz.mag_data_x*(float)mpu9250_handle->data.mag.factory_cal.factors.xyz.x - mpu9250_handle->data.mag.cal.offsets[X_POS]);
+		float biased_y = (mpu9250_handle->data.raw_data.data_s_xyz.mag_data_y*(float)mpu9250_handle->data.mag.factory_cal.factors.xyz.y - mpu9250_handle->data.mag.cal.offsets[Y_POS]);
+		float biased_z = (mpu9250_handle->data.raw_data.data_s_xyz.mag_data_z*(float)mpu9250_handle->data.mag.factory_cal.factors.xyz.z - mpu9250_handle->data.mag.cal.offsets[Z_POS]);
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = mpu9250_handle->data.mag.cal.factors[X_POS][X_POS]*biased_x + mpu9250_handle->data.mag.cal.factors[X_POS][Y_POS]*biased_y + mpu9250_handle->data.mag.cal.factors[X_POS][Z_POS]*biased_z;
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y = mpu9250_handle->data.mag.cal.factors[Y_POS][X_POS]*biased_x + mpu9250_handle->data.mag.cal.factors[Y_POS][Y_POS]*biased_y + mpu9250_handle->data.mag.cal.factors[Y_POS][Z_POS]*biased_z;
+		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_z = mpu9250_handle->data.mag.cal.factors[Z_POS][X_POS]*biased_x + mpu9250_handle->data.mag.cal.factors[Z_POS][Y_POS]*biased_y + mpu9250_handle->data.mag.cal.factors[Z_POS][Z_POS]*biased_z;
 	} else {
 		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_x = 0.0f;
 		mpu9250_handle->data.cal_data.data_s_xyz.mag_data_y = 0.0f;
