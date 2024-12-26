@@ -85,7 +85,7 @@ esp_err_t mpu9250_init(mpu9250_handle_t mpu9250_handle) {
 
     // set Gyro Configuration Register
 	printf("MPU9250: Gyro +-250deg/sec\n");
-	ESP_ERROR_CHECK(mpu9250_gyro_set_fsr(mpu9250_handle, INV_FSR_1000DPS));
+	ESP_ERROR_CHECK(mpu9250_gyro_set_fsr(mpu9250_handle, INV_FSR_250DPS));
 
     // set Acc Conf1 Register
 	ESP_ERROR_CHECK(mpu9250_acc_set_fsr(mpu9250_handle, INV_FSR_8G));
